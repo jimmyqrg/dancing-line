@@ -144,6 +144,11 @@ export class DancingLineGame {
 
   _buildPath() {
     const lvl = this.level;
+    if (!lvl.tile) lvl.tile = 1.0;
+    if (!lvl.tempo) lvl.tempo = 6.0;
+    if (!lvl.gems) lvl.gems = [];
+    if (!lvl.decor) lvl.decor = [];
+    if (!lvl.start) lvl.start = { x: 0, z: 0, dir: "x" };
     const tile = lvl.tile;
     const start = { x: lvl.start.x, z: lvl.start.z };
 

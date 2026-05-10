@@ -322,7 +322,7 @@ function initScene(bgColor, pathColor, lineColor) {
   scene.add(ground);
 
   camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 250);
-  camera.position.set(-10, 8, -5);
+  camera.position.set(-10, 8, -10);
   camera.lookAt(0, 0, 0);
 
   // Groups
@@ -331,8 +331,8 @@ function initScene(bgColor, pathColor, lineColor) {
   trailGroup = new THREE.Group();
   scene.add(trailGroup);
 
-  // Player head — same size and color as trail (centered on position)
-  const playerGeom = new THREE.BoxGeometry(0.5, 0.28, 0.5); // matches TRAIL_W
+  // Player head — cubic (width = height = depth = 0.28)
+  const playerGeom = new THREE.BoxGeometry(0.28, 0.28, 0.28);
   const playerMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(lineColor),
     emissive: new THREE.Color(lineColor),
@@ -372,18 +372,21 @@ function destroyScene() {
 
 let pathMaterial, trailMaterial, bgColor, pathColor, lineColor;
 
-function buildPathMesh(axis, length, width, startX, startZ) {
+function buildPathMesh(axis, length, width, startX, startZ, isFirst) {
   const w = widthScale(width);
+  // Extend path by half-width behind the start to fill corner gaps
+  const ext = isFirst ? 0 : w / 2;
+  const totalLen = length + ext;
   const geom = new THREE.BoxGeometry(
-    axis === "x" ? length : w,
+    axis === "x" ? totalLen : w,
     0.12,
-    axis === "z" ? length : w
+    axis === "z" ? totalLen : w
   );
   const mesh = new THREE.Mesh(geom, pathMaterial);
   mesh.receiveShadow = true;
-  // Center the path on the line (player travels along the center)
-  const cx = startX + (axis === "x" ? length / 2 : 0);
-  const cz = startZ + (axis === "z" ? length / 2 : 0);
+  // Shift center back by ext/2 so the extension goes behind startX/startZ
+  const cx = startX + (axis === "x" ? (length / 2 - ext / 2) : 0);
+  const cz = startZ + (axis === "z" ? (length / 2 - ext / 2) : 0);
   mesh.position.set(cx, -0.06, cz);
   return mesh;
 }
@@ -395,22 +398,22 @@ function rebuildPath() {
     c.geometry.dispose();
   }
   let dx = 0, dz = 0;
-  for (const seg of segments) {
-    const mesh = buildPathMesh(seg.axis, seg.length, seg.width, dx, dz);
+  segments.forEach((seg, i) => {
+    const mesh = buildPathMesh(seg.axis, seg.length, seg.width, dx, dz, i === 0);
     pathGroup.add(mesh);
     dx += seg.axis === "x" ? seg.length : 0;
     dz += seg.axis === "z" ? seg.length : 0;
-  }
+  });
 }
 
 const TRAIL_W = 0.5;
-function addTrailSegment(fromX, fromZ, toX, toZ) {
+function addTrailSegment(fromX, fromZ, toX, toZ, isFirst) {
   const dx = toX - fromX;
   const dz = toZ - fromZ;
   const len = Math.hypot(dx, dz);
   if (len < 0.01) return;
-  // Extend by half trail width at each end to cover corners cleanly
-  const ext = TRAIL_W / 2;
+  // Extend backward (behind "from") to fill the corner gap — skip for first segment
+  const ext = isFirst ? 0 : TRAIL_W / 2;
   const totalLen = len + ext;
   const geom = new THREE.BoxGeometry(
     Math.abs(dx) > Math.abs(dz) ? totalLen : TRAIL_W,
@@ -419,9 +422,9 @@ function addTrailSegment(fromX, fromZ, toX, toZ) {
   );
   const mesh = new THREE.Mesh(geom, trailMaterial);
   mesh.castShadow = true;
-  // Shift center slightly toward 'to' end (extend forward, not backward)
-  const cx = (fromX + toX) / 2 + (Math.sign(dx) * ext / 2);
-  const cz = (fromZ + toZ) / 2 + (Math.sign(dz) * ext / 2);
+  // Shift center backward (toward "from") so extension fills the corner behind
+  const cx = (fromX + toX) / 2 - (Math.sign(dx) * ext / 2);
+  const cz = (fromZ + toZ) / 2 - (Math.sign(dz) * ext / 2);
   mesh.position.set(cx, 0.14, cz);
   trailGroup.add(mesh);
 }
@@ -497,7 +500,7 @@ function startEditor() {
 
   // Position player and camera
   playerMesh.position.set(pos.x, 0.14, pos.z);
-  camPos = new THREE.Vector3(pos.x - 10, 8, pos.z - 5);
+  camPos = new THREE.Vector3(pos.x - 10, 8, pos.z - 10);
   camLook = new THREE.Vector3(pos.x, 0, pos.z);
   camera.position.copy(camPos);
   camera.lookAt(camLook);
@@ -568,8 +571,12 @@ function finish() {
 }
 
 function buildJSON() {
-  const segs = segments.map(s => ({ axis: s.axis, length: s.length, width: s.width }));
+  const segs = segments.map(s => ({ axis: s.axis, length: Math.round(s.length), width: s.width }));
   const result = {
+    name: "Custom Level",
+    tile: 1.0,
+    tempo: 6.0,
+    trailWidth: 0.32,
     theme: {
       sky: bgColor, ground: bgColor,
       tileTop: pathColor, tileSide: darken(pathColor, 0.4),
@@ -580,6 +587,8 @@ function buildJSON() {
     },
     start: { x: 0, z: 0, dir: "x" },
     segments: segs,
+    gems: [],
+    decor: [],
     totalSegments: segs.length,
     totalTiles: segs.reduce((sum, seg) => sum + seg.length, 0)
   };
@@ -613,21 +622,12 @@ function loop(now) {
   // Live path preview
   updateLivePath(headX, headZ);
 
-  // Camera: always BEHIND the player based on current direction
-  // The camera offset is opposite to the direction of movement
-  let offsetX, offsetZ;
-  if (direction === "x") {
-    offsetX = -10;
-    offsetZ = -5;
-  } else {
-    offsetX = -5;
-    offsetZ = -10;
-  }
-  const targetPos = new THREE.Vector3(headX + offsetX, 8, headZ + offsetZ);
+  // Camera: fixed angle, never rotates — only translates smoothly to follow player
+  const targetPos = new THREE.Vector3(headX - 10, 8, headZ - 10);
   const targetLook = new THREE.Vector3(headX, 0, headZ);
 
-  // Very smooth exponential follow
-  const s = 1 - Math.pow(0.005, dt);
+  // Smooth position-only follow (no tipping/rotation change)
+  const s = 1 - Math.pow(0.02, dt);
   camPos.lerp(targetPos, s);
   camLook.lerp(targetLook, s);
   camera.position.copy(camPos);
@@ -656,20 +656,23 @@ function updateLiveTrail(headX, headZ) {
 }
 
 let livePathMesh = null;
+const PATH_AHEAD = 3.0; // path extends this far ahead of the player
 function updateLivePath(headX, headZ) {
   if (livePathMesh) { scene.remove(livePathMesh); livePathMesh.geometry.dispose(); }
-  const len = currentSegLength;
-  if (len < 0.01) return;
   const w = widthScale(currentWidth);
+  // Path extends from pos to (head + PATH_AHEAD), centered on the player
+  const totalLen = currentSegLength + PATH_AHEAD;
+  if (totalLen < 0.01) return;
   const geom = new THREE.BoxGeometry(
-    direction === "x" ? len : w,
+    direction === "x" ? totalLen : w,
     0.12,
-    direction === "z" ? len : w
+    direction === "z" ? totalLen : w
   );
   livePathMesh = new THREE.Mesh(geom, pathMaterial);
   livePathMesh.receiveShadow = true;
-  const cx = pos.x + (direction === "x" ? len / 2 : 0);
-  const cz = pos.z + (direction === "z" ? len / 2 : 0);
+  // Center of the path slab is at midpoint between pos and (head + PATH_AHEAD)
+  const cx = pos.x + (direction === "x" ? totalLen / 2 : 0);
+  const cz = pos.z + (direction === "z" ? totalLen / 2 : 0);
   livePathMesh.position.set(cx, -0.06, cz);
   scene.add(livePathMesh);
 }

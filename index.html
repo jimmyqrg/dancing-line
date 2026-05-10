@@ -1558,8 +1558,7 @@
       }
 
       function restartCurrent() {
-        const data = buildLevelData(currentIdx);
-        if (!data || !game) return;
+        if (!game) return;
         showModal(pauseModal, false);
         showModal(dieModal, false);
         showModal(winModal, false);
@@ -1616,9 +1615,9 @@
         showModal(dieModal, false);
         showModal(winModal, false);
         dieVignette.classList.remove("is-active");
+        destroyGame();
         canvas.style.display = "none";
         gameCanvas.style.display = "block";
-        destroyGame();
         game = new DancingLineGame({
           canvas: gameCanvas,
           level: data,
