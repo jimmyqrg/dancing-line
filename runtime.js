@@ -54,10 +54,10 @@ const PLAYER_SIZE = 0.28;
 const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
-const OFF_PATH_GRACE = 0.6;
-const CAM_HEIGHT = 9;
-const CAM_DISTANCE = 11;
-const CAM_LOOK_AHEAD = 6;
+const OFF_PATH_GRACE = 0.3;
+const CAM_HEIGHT = 10;
+const CAM_DISTANCE = 12;
+const CAM_LOOK_AHEAD = 3;
 
 function widthScale(w) { return Math.pow(5, (w - 1) / 8); }
 
@@ -478,16 +478,15 @@ export class DancingLineGame {
       this.start();
       return;
     }
-    if (this.state !== "playing" && this.state !== "falling") return;
+    if (this.state !== "playing") return;
+    if (!this._isOnPath(this.position)) return;
     if (this.direction.x !== 0) {
       this.direction.set(0, 0, 1);
     } else {
       this.direction.set(1, 0, 0);
     }
 
-    if (this._isOnPath(this.position)) {
-      this._dropTrailUpTo(this.position.clone());
-    }
+    this._dropTrailUpTo(this.position.clone());
     this.lastCornerPos = this.position.clone();
     this._evaluateTurnCorrectness();
 
@@ -696,34 +695,22 @@ export class DancingLineGame {
 
     } else if (this.state === "falling" && dt > 0) {
       this.fallTimer += dt;
+      // Keep moving forward while falling
       const speed = this.level.tempo;
       this.position.x += this.direction.x * speed * dt;
       this.position.z += this.direction.z * speed * dt;
+      // Gravity drop
+      this.fallVelocity += FALL_GRAVITY * dt;
+      this.position.y -= this.fallVelocity * dt;
+      this.player.position.copy(this.position);
+      // Tumble rotation
+      this.player.rotation.x += dt * 3;
+      this.player.rotation.z += dt * 4;
 
-      // Check if the player turned back onto the path — rescue them
-      if (this._isOnPath(this.position)) {
-        this.state = "playing";
-        this.position.y = PLAYER_SIZE / 2 + 0.01;
-        this.fallTimer = 0;
-        this.fallVelocity = 0;
-        this._offPathTimer = 0;
-        this._lastOnPathPos = this.position.clone();
-        this._segmentLastWorld = this.position.clone();
-        this.player.rotation.set(0, 0, 0);
-        this.player.position.copy(this.position);
-        this.music.resume();
-      } else {
-        this.fallVelocity += FALL_GRAVITY * dt;
-        this.position.y -= this.fallVelocity * dt;
-        this.player.position.copy(this.position);
-        this.player.rotation.x += dt * 3;
-        this.player.rotation.z += dt * 4;
-
-        if (this.fallTimer >= FALL_DURATION) {
-          this.state = "dead";
-          this.audioPlay("death");
-          this.onEvent({ type: "death", gems: this.gemsCollected });
-        }
+      if (this.fallTimer >= FALL_DURATION) {
+        this.state = "dead";
+        this.audioPlay("death");
+        this.onEvent({ type: "death", gems: this.gemsCollected });
       }
 
     } else if (this.state === "dead") {
