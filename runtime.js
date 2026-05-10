@@ -56,7 +56,8 @@ const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.3;
 const CAM_HEIGHT = 7;
-const CAM_DISTANCE = 10;
+const CAM_BACK = 10;
+const CAM_SIDE = 5;
 
 function widthScale(w) { return Math.pow(5, (w - 1) / 8); }
 
@@ -418,17 +419,21 @@ export class DancingLineGame {
   }
 
   _updateCameraTargets() {
-    // Camera offset: more in -x than -z so the path (which goes +x and +z)
-    // extends toward center-top of screen instead of hard-right
+    const dir = this.direction;
+    // Perpendicular direction: rotate 90 degrees (−dz, 0, dx)
+    const perpX = -dir.z;
+    const perpZ = dir.x;
+    // Camera position: behind the player + offset to the side + elevated
     this._camTargetPos = new THREE.Vector3(
-      this.position.x - CAM_DISTANCE * 0.5,
+      this.position.x - dir.x * CAM_BACK + perpX * CAM_SIDE,
       CAM_HEIGHT,
-      this.position.z - CAM_DISTANCE * 1.4
+      this.position.z - dir.z * CAM_BACK + perpZ * CAM_SIDE
     );
+    // Look target: slightly ahead of the player
     this._camTargetLook = new THREE.Vector3(
-      this.position.x,
+      this.position.x + dir.x * 3,
       0,
-      this.position.z
+      this.position.z + dir.z * 3
     );
   }
 
