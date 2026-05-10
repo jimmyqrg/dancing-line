@@ -441,7 +441,13 @@ export class DancingLineGame {
   start() {
     this.state = "playing";
     this.startedAt = performance.now();
-    this.music.play();
+    const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
+    const delay = firstLen / (this.level.tempo || 6);
+    if (delay > 0) {
+      setTimeout(() => this.music.play(), delay * 1000);
+    } else {
+      this.music.play();
+    }
     this.onEvent({ type: "start" });
   }
 
