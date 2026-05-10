@@ -161,6 +161,10 @@
     <input type="number" id="start-length" value="8" min="1" max="50">
   </div>
   <div class="setup-row">
+    <label>Start Width</label>
+    <input type="number" id="start-width" value="1" min="1" max="9">
+  </div>
+  <div class="setup-row">
     <label>Music</label>
     <select id="music-select">
       <option value="">None</option>
@@ -208,6 +212,7 @@ const colBg = document.getElementById("col-bg");
 const colPath = document.getElementById("col-path");
 const colLine = document.getElementById("col-line");
 const startLengthEl = document.getElementById("start-length");
+const startWidthEl = document.getElementById("start-width");
 const musicSelect = document.getElementById("music-select");
 const musicFileEl = document.getElementById("music-file");
 const startBtn = document.getElementById("start-btn");
@@ -226,7 +231,7 @@ function saveSettings() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       bg: colBg.value, path: colPath.value, line: colLine.value,
-      startLength: startLengthEl.value,
+      startLength: startLengthEl.value, startWidth: startWidthEl.value,
       music: musicSelect.value === "__upload__" ? "" : musicSelect.value
     }));
   } catch (_) {}
@@ -239,6 +244,7 @@ function loadSettings() {
     if (d.path) colPath.value = d.path;
     if (d.line) colLine.value = d.line;
     if (d.startLength) startLengthEl.value = d.startLength;
+    if (d.startWidth) startWidthEl.value = d.startWidth;
     if (d.music) musicSelect.value = d.music;
   } catch (_) {}
 }
@@ -315,9 +321,8 @@ function initScene(bgColor, pathColor, lineColor) {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Camera: behind the player looking forward (player moves away from camera)
   camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 250);
-  camera.position.set(-8, 7, -8);
+  camera.position.set(-10, 8, -5);
   camera.lookAt(0, 0, 0);
 
   // Groups
@@ -326,8 +331,8 @@ function initScene(bgColor, pathColor, lineColor) {
   trailGroup = new THREE.Group();
   scene.add(trailGroup);
 
-  // Player head — same size and color as trail
-  const playerGeom = new THREE.BoxGeometry(0.5, 0.28, 0.5);
+  // Player head — same size and color as trail (centered on position)
+  const playerGeom = new THREE.BoxGeometry(0.5, 0.28, 0.5); // matches TRAIL_W
   const playerMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(lineColor),
     emissive: new THREE.Color(lineColor),
@@ -398,19 +403,26 @@ function rebuildPath() {
   }
 }
 
+const TRAIL_W = 0.5;
 function addTrailSegment(fromX, fromZ, toX, toZ) {
   const dx = toX - fromX;
   const dz = toZ - fromZ;
   const len = Math.hypot(dx, dz);
   if (len < 0.01) return;
+  // Extend by half trail width at each end to cover corners cleanly
+  const ext = TRAIL_W / 2;
+  const totalLen = len + ext;
   const geom = new THREE.BoxGeometry(
-    Math.abs(dx) > Math.abs(dz) ? len : 0.5,
+    Math.abs(dx) > Math.abs(dz) ? totalLen : TRAIL_W,
     0.28,
-    Math.abs(dz) >= Math.abs(dx) ? len : 0.5
+    Math.abs(dz) >= Math.abs(dx) ? totalLen : TRAIL_W
   );
   const mesh = new THREE.Mesh(geom, trailMaterial);
   mesh.castShadow = true;
-  mesh.position.set((fromX + toX) / 2, 0.14, (fromZ + toZ) / 2);
+  // Shift center slightly toward 'to' end (extend forward, not backward)
+  const cx = (fromX + toX) / 2 + (Math.sign(dx) * ext / 2);
+  const cz = (fromZ + toZ) / 2 + (Math.sign(dz) * ext / 2);
+  mesh.position.set(cx, 0.14, cz);
   trailGroup.add(mesh);
 }
 
@@ -449,10 +461,11 @@ function startEditor() {
   editorEl.classList.add("active");
 
   segments = [];
-  currentWidth = 1;
+  currentWidth = Math.max(1, Math.min(9, parseInt(startWidthEl.value) || 1));
   direction = "x";
   pos = { x: 0, z: 0 };
   currentSegLength = 0;
+  widthDisplay.textContent = "Width: " + currentWidth + " (" + widthScale(currentWidth).toFixed(1) + "x)";
 
   initScene(bgColor, pathColor, lineColor);
 
@@ -469,16 +482,11 @@ function startEditor() {
     roughness: 0.45,
   });
 
-  // Commit the starting straight segment (uses currentWidth, default 1)
+  // Commit the starting straight segment using start width
   segments.push({ axis: "x", length: startLength, width: currentWidth });
   pos.x = startLength;
   rebuildPath();
   segCountEl.textContent = "Segments: 1";
-
-  // Position camera BEHIND player and player at end of start segment
-  playerMesh.position.set(pos.x, 0.14, pos.z);
-  camera.position.set(pos.x - 8, 7, pos.z - 8);
-  camera.lookAt(pos.x, 0, pos.z);
 
   // Trail for starting segment
   trailLastX = 0;
@@ -486,6 +494,13 @@ function startEditor() {
   addTrailSegment(0, 0, pos.x, pos.z);
   trailLastX = pos.x;
   trailLastZ = pos.z;
+
+  // Position player and camera
+  playerMesh.position.set(pos.x, 0.14, pos.z);
+  camPos = new THREE.Vector3(pos.x - 10, 8, pos.z - 5);
+  camLook = new THREE.Vector3(pos.x, 0, pos.z);
+  camera.position.copy(camPos);
+  camera.lookAt(camLook);
 
   // Start music
   if (musicAudio) { musicAudio.pause(); musicAudio = null; }
@@ -575,6 +590,9 @@ function buildJSON() {
   return result;
 }
 
+let camPos = new THREE.Vector3();
+let camLook = new THREE.Vector3();
+
 function loop(now) {
   if (!running) return;
   const dt = Math.min((now - lastTime) / 1000, 0.05);
@@ -582,11 +600,11 @@ function loop(now) {
 
   currentSegLength += speed * dt;
 
-  // Current head world position
+  // Current head world position (CENTER of player)
   const headX = pos.x + (direction === "x" ? currentSegLength : 0);
   const headZ = pos.z + (direction === "z" ? currentSegLength : 0);
 
-  // Update player
+  // Update player position
   playerMesh.position.set(headX, 0.14, headZ);
 
   // Live trail from last commit to head
@@ -595,12 +613,25 @@ function loop(now) {
   // Live path preview
   updateLivePath(headX, headZ);
 
-  // Camera: behind the player (player moves away from camera), very smooth
-  const camTarget = new THREE.Vector3(headX - 8, 7, headZ - 8);
-  const smoothFactor = 1 - Math.pow(0.01, dt); // exponential smoothing, ~frame-independent
-  camera.position.lerp(camTarget, smoothFactor);
-  const lookTarget = new THREE.Vector3(headX, 0, headZ);
-  camera.lookAt(lookTarget);
+  // Camera: always BEHIND the player based on current direction
+  // The camera offset is opposite to the direction of movement
+  let offsetX, offsetZ;
+  if (direction === "x") {
+    offsetX = -10;
+    offsetZ = -5;
+  } else {
+    offsetX = -5;
+    offsetZ = -10;
+  }
+  const targetPos = new THREE.Vector3(headX + offsetX, 8, headZ + offsetZ);
+  const targetLook = new THREE.Vector3(headX, 0, headZ);
+
+  // Very smooth exponential follow
+  const s = 1 - Math.pow(0.005, dt);
+  camPos.lerp(targetPos, s);
+  camLook.lerp(targetLook, s);
+  camera.position.copy(camPos);
+  camera.lookAt(camLook);
 
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
@@ -614,9 +645,9 @@ function updateLiveTrail(headX, headZ) {
   const len = Math.hypot(dx, dz);
   if (len < 0.01) return;
   const geom = new THREE.BoxGeometry(
-    Math.abs(dx) > Math.abs(dz) ? len : 0.5,
+    Math.abs(dx) > Math.abs(dz) ? len : TRAIL_W,
     0.28,
-    Math.abs(dz) >= Math.abs(dx) ? len : 0.5
+    Math.abs(dz) >= Math.abs(dx) ? len : TRAIL_W
   );
   liveTrailMesh = new THREE.Mesh(geom, trailMaterial);
   liveTrailMesh.castShadow = true;
