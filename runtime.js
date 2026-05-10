@@ -313,15 +313,33 @@ export class DancingLineGame {
     this.scene.add(ring);
     this.finishRing = ring;
 
-    const markerGeom = new THREE.PlaneGeometry(0.7, 0.7);
+    const darkMarkerLevels = ["The Beginning", "The Piano", "The Winter", "The Desert", "The Earth"];
+    const markerColor = darkMarkerLevels.includes(this.level.name) ? 0x000000 : 0xffffff;
+    const squareShape = new THREE.Shape();
+    const hs = 0.35;
+    squareShape.moveTo(-hs, -hs);
+    squareShape.lineTo(hs, -hs);
+    squareShape.lineTo(hs, hs);
+    squareShape.lineTo(-hs, hs);
+    squareShape.closePath();
+    const hole = new THREE.Path();
+    const hi = hs - 0.06;
+    hole.moveTo(-hi, -hi);
+    hole.lineTo(hi, -hi);
+    hole.lineTo(hi, hi);
+    hole.lineTo(-hi, hi);
+    hole.closePath();
+    squareShape.holes.push(hole);
+    const markerGeom = new THREE.ShapeGeometry(squareShape);
+
     this.markers = [];
     this.bursts = [];
     for (let ci = 1; ci < this.corners.length - 1; ci++) {
       const c = this.corners[ci];
       const mat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(t.line),
+        color: markerColor,
         transparent: true,
-        opacity: 0.4,
+        opacity: 0.5,
         side: THREE.DoubleSide,
       });
       const marker = new THREE.Mesh(markerGeom, mat);
@@ -487,8 +505,23 @@ export class DancingLineGame {
     this._dropTrailUpTo(this.position.clone());
     this.lastCornerPos = this.position.clone();
     this._evaluateTurnCorrectness();
+    this._triggerOverlappingMarkers();
 
     this.onEvent({ type: "turn", position: this.position.clone() });
+  }
+
+  _triggerOverlappingMarkers() {
+    const radius = 0.6;
+    for (const m of this.markers) {
+      if (m.userData.triggered) continue;
+      const dx = Math.abs(this.position.x - m.position.x);
+      const dz = Math.abs(this.position.z - m.position.z);
+      if (dx < radius && dz < radius) {
+        m.userData.triggered = true;
+        m.visible = false;
+        this._spawnBurst(m.position);
+      }
+    }
   }
 
   _evaluateTurnCorrectness() {
@@ -522,19 +555,6 @@ export class DancingLineGame {
     this.bursts.push(burst);
   }
 
-  _checkMarkers() {
-    const radius = 0.5;
-    for (const m of this.markers) {
-      if (m.userData.triggered) continue;
-      const dx = this.position.x - m.position.x;
-      const dz = this.position.z - m.position.z;
-      if (Math.abs(dx) < radius && Math.abs(dz) < radius) {
-        m.userData.triggered = true;
-        m.visible = false;
-        this._spawnBurst(m.position);
-      }
-    }
-  }
 
   _dropTrailUpTo(pos) {
     const start = this._segmentLastWorld;
@@ -561,11 +581,10 @@ export class DancingLineGame {
   }
 
   _isOnPath(pos) {
-    const PAD = 0.15;
     if (this.hasSegmentWidths) {
       for (const r of this.pathRects) {
-        if (pos.x >= r.minX - PAD && pos.x <= r.maxX + PAD &&
-            pos.z >= r.minZ - PAD && pos.z <= r.maxZ + PAD) return true;
+        if (pos.x >= r.minX && pos.x <= r.maxX &&
+            pos.z >= r.minZ && pos.z <= r.maxZ) return true;
       }
       return false;
     }
@@ -712,7 +731,6 @@ export class DancingLineGame {
 
       this.player.position.copy(this.position);
 
-      this._checkMarkers();
       this._checkGems();
       this._checkFinish();
 
@@ -775,19 +793,12 @@ export class DancingLineGame {
   }
 
   _updateCamera(dt) {
-    const targetPos = new THREE.Vector3(
+    this.camera.position.set(
       this.position.x + CAM_OFFSET.x,
       CAM_OFFSET.y,
       this.position.z + CAM_OFFSET.z
     );
-    const targetLook = new THREE.Vector3(this.position.x, 0, this.position.z);
-
-    const s = 1 - Math.pow(CAM_LERP, dt);
-    this._camPos.lerp(targetPos, s);
-    this._camLook.lerp(targetLook, s);
-
-    this.camera.position.copy(this._camPos);
-    this.camera.lookAt(this._camLook);
+    this.camera.lookAt(this.position.x, 0, this.position.z);
 
     if (this.dirLight) {
       this.dirLight.position.set(this.position.x + 20, 30, this.position.z + 12);
