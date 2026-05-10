@@ -5,12 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0a1f23" />
     <title>Dancing Line</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poiret+One&display=swap"
-      rel="stylesheet"
-    />
+    <style>
+      @font-face {
+        font-family: "DL English";
+        src: url("./font.ttf") format("truetype");
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "DL Chinese";
+        src: url("./font2.ttf") format("truetype");
+        font-display: swap;
+      }
+    </style>
     <script type="importmap">
       {
         "imports": {
@@ -46,7 +52,7 @@
 
       body {
         position: relative;
-        font-family: "Poiret One", system-ui, sans-serif;
+        font-family: "DL English", "DL Chinese", system-ui, sans-serif;
         font-weight: 400;
         color: var(--ink);
         background:
@@ -157,16 +163,18 @@
         text-transform: uppercase;
         color: var(--ink-soft);
         animation: pulse 1.6s ease-in-out infinite;
+        margin-top: 3rem;
       }
 
       .boot__credit {
         position: absolute;
-        bottom: 2rem;
+        bottom: 1.2rem;
         left: 50%;
         transform: translateX(-50%);
-        font-size: 0.85rem;
-        letter-spacing: 0.12em;
-        opacity: 0.45;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        opacity: 0.4;
+        white-space: nowrap;
       }
 
       @keyframes pulse {
@@ -362,12 +370,24 @@
 
       .test-modal {
         position: fixed; inset: 0; z-index: 50;
-        display: none; flex-direction: column;
+        display: none;
         align-items: center; justify-content: center;
-        gap: 1rem;
-        background: rgba(0,0,0,0.85);
-        backdrop-filter: blur(6px);
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(14px);
         padding: 2rem;
+      }
+      .test-modal__glass {
+        display: flex; flex-direction: column; gap: 1rem;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 1.4rem;
+        padding: 2rem;
+        backdrop-filter: blur(20px) saturate(1.4);
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.05);
       }
       .test-modal.is-active { display: flex; }
       .test-modal__title {
@@ -402,6 +422,74 @@
         transition: background 200ms;
       }
       .test-modal__btn:hover { background: rgba(255,255,255,0.2); }
+
+      .settings-modal {
+        position: fixed; inset: 0; z-index: 55;
+        display: none;
+        align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(14px);
+      }
+      .settings-modal.is-active { display: flex; }
+      .settings-modal__inner {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 1.4rem;
+        padding: 2rem 2.4rem;
+        min-width: min(85vw, 340px);
+        display: flex; flex-direction: column; gap: 1.4rem;
+        backdrop-filter: blur(20px) saturate(1.4);
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+      }
+      .settings-modal__title {
+        font-size: 1.3rem;
+        letter-spacing: 0.1em;
+        text-align: center;
+        margin-bottom: 0.5rem;
+      }
+      .settings-modal__row {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      }
+      .settings-label {
+        font-size: 0.95rem; letter-spacing: 0.06em; opacity: 0.85;
+      }
+      .settings-toggle {
+        display: flex; gap: 0; border: 1px solid rgba(255,255,255,0.2); border-radius: 0.4rem; overflow: hidden;
+      }
+      .settings-toggle__btn {
+        padding: 0.4rem 0.8rem; font-size: 0.8rem;
+        background: transparent; color: var(--ink); border: none; cursor: pointer;
+        letter-spacing: 0.04em; transition: background 200ms;
+      }
+      .settings-toggle__btn.is-active {
+        background: rgba(255,255,255,0.18);
+      }
+      .settings-toggle__btn:hover { background: rgba(255,255,255,0.1); }
+      .settings-switch {
+        width: 44px; height: 24px; border: none; border-radius: 12px; cursor: pointer;
+        background: rgba(255,255,255,0.15); padding: 0; position: relative;
+        transition: background 200ms;
+      }
+      .settings-switch.is-on { background: rgba(100,200,130,0.6); }
+      .settings-switch__track {
+        display: block; width: 100%; height: 100%; position: relative;
+      }
+      .settings-switch__thumb {
+        position: absolute; top: 2px; left: 2px;
+        width: 20px; height: 20px; border-radius: 50%;
+        background: #fff; transition: transform 200ms;
+      }
+      .settings-switch.is-on .settings-switch__thumb { transform: translateX(20px); }
+      .settings-modal__close {
+        align-self: center; padding: 0.5rem 2rem;
+        background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 0.4rem; color: var(--ink); font-size: 0.9rem;
+        letter-spacing: 0.1em; cursor: pointer; transition: background 200ms;
+      }
+      .settings-modal__close:hover { background: rgba(255,255,255,0.2); }
 
       .ico {
         width: 2.6rem;
@@ -562,6 +650,14 @@
         justify-items: center;
         text-align: center;
         padding: 2rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 1.4rem;
+        backdrop-filter: blur(20px) saturate(1.4);
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.05);
       }
 
       .modal__title {
@@ -715,7 +811,7 @@
     <div class="vignette" aria-hidden="true"></div>
     <div class="vignette--die" data-die-vignette aria-hidden="true"></div>
     <div class="toast" data-toast aria-hidden="true"></div>
-    <div class="tap-prompt" data-tap-prompt aria-hidden="true">Tap to start</div>
+    <div class="tap-prompt" data-tap-prompt data-i18n="tapToStart" aria-hidden="true">Tap to start</div>
 
     <svg width="0" height="0" style="position: absolute; pointer-events: none" aria-hidden="true">
       <defs>
@@ -842,10 +938,10 @@
       <!-- Boot screen -->
       <section class="screen boot is-active" data-screen="boot" tabindex="0">
         <div class="boot__inner">
-          <h1 class="boot__title">Dancing Line</h1>
+          <h1 class="boot__title" data-i18n="title">Dancing Line</h1>
           <span class="boot__rule" aria-hidden="true"></span>
-          <p class="boot__prompt">Tap to start</p>
-          <p class="boot__credit">Ported by JimmyQrg</p>
+          <p class="boot__prompt" data-i18n="tapToStart">Tap to start</p>
+          <p class="boot__credit" data-i18n="credit">Game by Cheetah Mobile, ported by JimmyQrg</p>
         </div>
       </section>
 
@@ -855,10 +951,10 @@
           <button class="ico" data-back-boot aria-label="Back to title">
             <svg class="icon"><use href="#i-home" /></svg>
           </button>
-          <p class="select__heading">Select Level</p>
-          <span class="ico ghost" aria-hidden="true">
+          <p class="select__heading" data-select-heading>Select Level</p>
+          <button class="ico" data-settings-open aria-label="Settings">
             <svg class="icon"><use href="#i-settings" /></svg>
-          </span>
+          </button>
         </header>
 
         <div class="select__main">
@@ -882,17 +978,46 @@
           <button class="play-cta" data-play aria-label="Play level">
             <svg class="icon"><use href="#i-play" /></svg>
           </button>
-          <button class="test-btn" data-test-open aria-label="Test custom level">Test</button>
+          <button class="test-btn" data-test-open data-i18n="test" aria-label="Test custom level">Test</button>
         </footer>
       </section>
 
       <!-- Test level modal -->
       <div class="test-modal" data-test-modal>
-        <h3 class="test-modal__title">Test Level</h3>
-        <textarea class="test-modal__input" data-test-json placeholder="Paste level JSON here..."></textarea>
-        <div class="test-modal__actions">
-          <button class="test-modal__btn" data-test-play>Play</button>
-          <button class="test-modal__btn" data-test-close>Cancel</button>
+        <div class="test-modal__glass">
+          <h3 class="test-modal__title" data-i18n="testLevel">Test Level</h3>
+          <textarea class="test-modal__input" data-test-json data-i18n-ph="pasteJson" placeholder="Paste level JSON here..."></textarea>
+          <div class="test-modal__actions">
+            <button class="test-modal__btn" data-test-play data-i18n="play">Play</button>
+            <button class="test-modal__btn" data-test-close data-i18n="cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings modal -->
+      <div class="settings-modal" data-settings-modal>
+        <div class="settings-modal__inner">
+          <h3 class="settings-modal__title" data-i18n="settings">Settings</h3>
+          <div class="settings-modal__row">
+            <label class="settings-label" data-i18n="language">Language</label>
+            <div class="settings-toggle" data-lang-toggle>
+              <button class="settings-toggle__btn is-active" data-lang="en">English</button>
+              <button class="settings-toggle__btn" data-lang="zh">简体中文</button>
+            </div>
+          </div>
+          <div class="settings-modal__row">
+            <label class="settings-label" data-i18n="autoPlay">Auto Play</label>
+            <button class="settings-switch" data-autoplay-toggle>
+              <span class="settings-switch__track"><span class="settings-switch__thumb"></span></span>
+            </button>
+          </div>
+          <div class="settings-modal__row">
+            <label class="settings-label" data-i18n="enableGlow">Enable Glow</label>
+            <button class="settings-switch" data-glow-toggle>
+              <span class="settings-switch__track"><span class="settings-switch__thumb"></span></span>
+            </button>
+          </div>
+          <button class="settings-modal__close" data-settings-close>OK</button>
         </div>
       </div>
 
@@ -921,7 +1046,7 @@
 
         <div class="modal" data-pause-modal aria-hidden="true">
           <div class="modal__inner">
-            <h3 class="modal__title">Paused</h3>
+            <h3 class="modal__title" data-i18n="paused">Paused</h3>
             <div class="modal__row">
               <button class="ico-lg" data-resume aria-label="Resume">
                 <svg class="icon"><use href="#i-play" /></svg>
@@ -956,8 +1081,8 @@
 
         <div class="modal" data-win-modal aria-hidden="true">
           <div class="modal__inner">
-            <p class="modal__sub">Level complete</p>
-            <h3 class="modal__title">Victory</h3>
+            <p class="modal__sub" data-i18n="levelComplete">Level complete</p>
+            <h3 class="modal__title" data-i18n="victory">Victory</h3>
             <p class="gem-tally">
               <svg class="gem" aria-hidden="true"><use href="#i-diamond" /></svg>
               <span data-win-gems>0</span>
@@ -1536,7 +1661,12 @@
       function updateBest(id) {
         const prog = getLevelProgress();
         const best = prog[id];
-        bestEl.textContent = best != null ? `Best: ${best}%` : "";
+        if (best != null) {
+          const label = currentLang === "zh" ? "最佳" : "Best";
+          bestEl.textContent = `${label}: ${best}%`;
+        } else {
+          bestEl.textContent = "";
+        }
       }
 
       function goTo(idx, dir = 1) {
@@ -1547,7 +1677,7 @@
 
         nameEl.classList.add("is-swap");
         setTimeout(() => {
-          nameEl.textContent = lvl.name;
+          nameEl.textContent = getLevelDisplayName(lvl);
           nameEl.classList.remove("is-swap");
         }, 180);
 
@@ -1621,6 +1751,7 @@
         const meta = LEVELS[idx];
         const data = LEVEL_DATA.levels?.[meta.id];
         if (!data) return null;
+        data.id = meta.id;
         return data;
       }
 
@@ -1644,7 +1775,7 @@
           showToast("Level not loaded");
           return;
         }
-        gameTitleEl.textContent = lvl.name;
+        gameTitleEl.textContent = getLevelDisplayName(lvl);
         gemsEl.textContent = "0";
         progressEl.style.width = "0%";
         showModal(pauseModal, false);
@@ -1665,9 +1796,11 @@
           onEvent: handleGameEvent,
           musicUrl: data.audio || null,
           preloadedAudioEl: data.audio ? preloadedAudio[data.audio] : null,
+          autoPlay,
+          enableGlow,
         });
         showScreen("game");
-        tapPrompt.classList.add("is-active");
+        if (!autoPlay) tapPrompt.classList.add("is-active");
       }
 
       function getLevelProgress() {
@@ -1699,14 +1832,14 @@
             dieVignette.classList.add("is-active");
             setTimeout(() => showModal(dieModal, true), 700);
             const lvl = LEVELS[currentIdx];
-            if (lvl) saveLevelProgress(lvl.id, pct);
+            if (lvl && !autoPlay) saveLevelProgress(lvl.id, pct);
             break;
           }
           case "victory": {
             winGemsEl.textContent = String(ev.gems);
             setTimeout(() => showModal(winModal, true), 600);
             const lvl = LEVELS[currentIdx];
-            if (lvl) saveLevelProgress(lvl.id, 100);
+            if (lvl && !autoPlay) saveLevelProgress(lvl.id, 100);
             break;
           }
         }
@@ -1764,7 +1897,7 @@
           return;
         }
         testModal.classList.remove("is-active");
-        gameTitleEl.textContent = data.name || "Test Level";
+        gameTitleEl.textContent = data.name || (currentLang === "zh" ? "测试关卡" : "Test Level");
         gemsEl.textContent = "0";
         progressEl.style.width = "0%";
         showModal(pauseModal, false);
@@ -1784,6 +1917,125 @@
         showScreen("game");
         tapPrompt.classList.add("is-active");
       });
+
+      // ─────────────────────────────────────────────────────────────
+      // Settings (language + auto play)
+      // ─────────────────────────────────────────────────────────────
+
+      const LEVEL_NAMES_ZH = {
+        beginning: "时光", piano: "钢琴", ocean: "海洋", winter: "寒冬",
+        desert: "沙漠", earth: "地球", taurus: "金牛座", crystal: "水晶",
+        chaos: "混沌", storm: "风暴", "abs-storm": "风暴之怒",
+      };
+
+      let currentLang = localStorage.getItem("dl_lang") || "en";
+      let autoPlay = localStorage.getItem("dl_autoplay") === "1";
+      let enableGlow = localStorage.getItem("dl_glow") !== "0";
+
+      const settingsModal = document.querySelector("[data-settings-modal]");
+      const autoplayToggle = document.querySelector("[data-autoplay-toggle]");
+      const glowToggle = document.querySelector("[data-glow-toggle]");
+      const langBtns = document.querySelectorAll("[data-lang]");
+
+      function getLevelDisplayName(lvl) {
+        if (currentLang === "zh") return LEVEL_NAMES_ZH[lvl.id] || lvl.name;
+        return lvl.name;
+      }
+
+      const I18N = {
+        en: {
+          title: "Dancing Line",
+          tapToStart: "Tap to start",
+          credit: "Game by Cheetah Mobile, ported by JimmyQrg",
+          selectLevel: "Select Level",
+          settings: "Settings",
+          language: "Language",
+          autoPlay: "Auto Play",
+          enableGlow: "Enable Glow",
+          testLevel: "Test Level",
+          test: "Test",
+          play: "Play",
+          cancel: "Cancel",
+          paused: "Paused",
+          victory: "Victory",
+          levelComplete: "Level complete",
+          best: "Best",
+          pasteJson: "Paste level JSON here...",
+        },
+        zh: {
+          title: "跳舞的线",
+          tapToStart: "点击开始",
+          credit: "游戏由猎豹公司开发，由J有点死了移植",
+          selectLevel: "选择关卡",
+          settings: "设置",
+          language: "语言",
+          autoPlay: "自动游玩",
+          enableGlow: "启用发光",
+          testLevel: "测试关卡",
+          test: "测试",
+          play: "开始",
+          cancel: "取消",
+          paused: "暂停",
+          victory: "通关",
+          levelComplete: "关卡完成",
+          best: "最佳",
+          pasteJson: "在此粘贴关卡JSON...",
+        },
+      };
+
+      function applyLang() {
+        localStorage.setItem("dl_lang", currentLang);
+        langBtns.forEach(b => b.classList.toggle("is-active", b.dataset.lang === currentLang));
+        const t = I18N[currentLang] || I18N.en;
+        document.querySelectorAll("[data-i18n]").forEach(el => {
+          const key = el.dataset.i18n;
+          if (t[key]) el.textContent = t[key];
+        });
+        document.querySelectorAll("[data-i18n-ph]").forEach(el => {
+          const key = el.dataset.i18nPh;
+          if (t[key]) el.placeholder = t[key];
+        });
+        document.querySelector("[data-select-heading]").textContent = t.selectLevel;
+        nameEl.textContent = getLevelDisplayName(LEVELS[currentIdx]);
+        updateBest(LEVELS[currentIdx].id);
+      }
+
+      function applyAutoPlay() {
+        localStorage.setItem("dl_autoplay", autoPlay ? "1" : "0");
+        autoplayToggle.classList.toggle("is-on", autoPlay);
+      }
+
+      function applyGlow() {
+        localStorage.setItem("dl_glow", enableGlow ? "1" : "0");
+        glowToggle.classList.toggle("is-on", enableGlow);
+      }
+
+      langBtns.forEach(btn => btn.addEventListener("click", () => {
+        currentLang = btn.dataset.lang;
+        applyLang();
+      }));
+
+      autoplayToggle.addEventListener("click", () => {
+        autoPlay = !autoPlay;
+        applyAutoPlay();
+      });
+
+      glowToggle.addEventListener("click", () => {
+        enableGlow = !enableGlow;
+        applyGlow();
+      });
+
+      document.querySelector("[data-settings-open]").addEventListener("click", () => {
+        settingsModal.classList.add("is-active");
+      });
+      document.querySelector("[data-settings-close]").addEventListener("click", () => {
+        settingsModal.classList.remove("is-active");
+      });
+
+      applyAutoPlay();
+      applyGlow();
+
+      // ─────────────────────────────────────────────────────────────
 
       function togglePause(force) {
         if (!game) return;
@@ -1810,6 +2062,7 @@
 
       loadLevel(LEVELS[0]);
       updateBest(LEVELS[0].id);
+      applyLang();
       setMode("boot");
       scene.zoom = MODES.boot.focus;
       scene.alpha = MODES.boot.alpha;

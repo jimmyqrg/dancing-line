@@ -3,6 +3,7 @@
     "tile": 1,
     "tempo": 6,
     "trailWidth": 0.32,
+    "glow": true,
     "theme": {
       "sky": "#0b1528",
       "ground": "#0b1528",

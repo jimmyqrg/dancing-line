@@ -169,6 +169,10 @@
     <input type="number" id="player-speed" value="5" min="1" max="20" step="0.5">
   </div>
   <div class="setup-row">
+    <label>Enable Glow</label>
+    <input type="checkbox" id="enable-glow">
+  </div>
+  <div class="setup-row">
     <label>Music</label>
     <select id="music-select">
       <option value="">None</option>
@@ -224,6 +228,7 @@ const colLine = document.getElementById("col-line");
 const startLengthEl = document.getElementById("start-length");
 const startWidthEl = document.getElementById("start-width");
 const playerSpeedEl = document.getElementById("player-speed");
+const enableGlowEl = document.getElementById("enable-glow");
 const musicSelect = document.getElementById("music-select");
 const musicFileEl = document.getElementById("music-file");
 const startBtn = document.getElementById("start-btn");
@@ -243,7 +248,7 @@ function saveSettings() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       bg: colBg.value, path: colPath.value, line: colLine.value,
       startLength: startLengthEl.value, startWidth: startWidthEl.value,
-      speed: playerSpeedEl.value,
+      speed: playerSpeedEl.value, glow: enableGlowEl.checked,
       music: musicSelect.value === "__upload__" ? "" : musicSelect.value
     }));
   } catch (_) {}
@@ -258,6 +263,7 @@ function loadSettings() {
     if (d.startLength) startLengthEl.value = d.startLength;
     if (d.startWidth) startWidthEl.value = d.startWidth;
     if (d.speed) playerSpeedEl.value = d.speed;
+    if (d.glow != null) enableGlowEl.checked = d.glow;
     if (d.music) musicSelect.value = d.music;
   } catch (_) {}
 }
@@ -605,6 +611,7 @@ function buildJSON() {
     tile: 1.0,
     tempo: speed,
     trailWidth: 0.32,
+    glow: enableGlowEl.checked,
     theme: {
       sky: bgColor, ground: bgColor,
       tileTop: pathColor, tileSide: darken(pathColor, 0.4),

@@ -1,4 +1,7 @@
 import * as THREE from "three";
+import { EffectComposer } from "https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/UnrealBloomPass.js";
 
 class MusicPlayer {
   constructor(url, preloadedElement) {
@@ -67,12 +70,14 @@ const CAM_OFFSET = { x: -10, y: 11, z: -10 };
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
 export class DancingLineGame {
-  constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl }) {
+  constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl, autoPlay, enableGlow }) {
     this.canvas = canvas;
     this.level = level;
     this.onEvent = onEvent || (() => {});
     this.audioPlay = audioPlay || (() => {});
     this.music = new MusicPlayer(musicUrl, preloadedAudioEl);
+    this.autoPlay = autoPlay || false;
+    this.enableGlow = enableGlow && (level.glow === true);
 
     this.state = "ready";
     this.gemsCollected = 0;
@@ -84,10 +89,15 @@ export class DancingLineGame {
     this._buildWorld();
     this._initCamera();
     this._initInput();
+    this._initPostProcessing();
 
     this._lastTs = 0;
     this._frame = this._frame.bind(this);
     requestAnimationFrame(this._frame);
+
+    if (this.autoPlay) {
+      setTimeout(() => { if (this.state === "ready") this.start(); }, 600);
+    }
   }
 
   _initRenderer() {
@@ -110,6 +120,7 @@ export class DancingLineGame {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
       }
+      if (this.composer) this.composer.setSize(window.innerWidth, window.innerHeight);
     };
     window.addEventListener("resize", this._onResize);
   }
@@ -381,10 +392,11 @@ export class DancingLineGame {
     }
 
     const playerGeom = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
+    const glowIntensity = this.enableGlow ? 1.2 : 0.55;
     const playerMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(t.line),
       emissive: new THREE.Color(t.line),
-      emissiveIntensity: 0.55,
+      emissiveIntensity: glowIntensity,
       roughness: 0.45,
       metalness: 0.1,
     });
@@ -399,7 +411,7 @@ export class DancingLineGame {
     this.trailMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(t.line),
       emissive: new THREE.Color(t.line),
-      emissiveIntensity: 0.55,
+      emissiveIntensity: glowIntensity,
       roughness: 0.45,
       metalness: 0.1,
     });
@@ -434,6 +446,16 @@ export class DancingLineGame {
     this.camera.lookAt(this._camLook);
   }
 
+
+  _initPostProcessing() {
+    if (!this.enableGlow) { this.composer = null; return; }
+    const size = new THREE.Vector2(window.innerWidth, window.innerHeight);
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    const bloom = new UnrealBloomPass(size, 0.6, 0.4, 0.2);
+    this.composer.addPass(bloom);
+    this._bloomPass = bloom;
+  }
 
   _initInput() {
     this._onPointerDown = (e) => {
@@ -484,11 +506,33 @@ export class DancingLineGame {
     else if (this.state === "paused") this.resume();
   }
 
+  _autoTurn() {
+    if (this.cornerIndex >= this.corners.length - 1) return;
+    const next = this.corners[this.cornerIndex + 1];
+    const tile = this.level.tile || 1;
+    const tx = next.x * tile;
+    const tz = next.z * tile;
+    const dx = tx - this.position.x;
+    const dz = tz - this.position.z;
+    const dist = Math.abs(this.direction.x !== 0 ? dx : dz);
+    if (dist <= TURN_TOLERANCE * 0.5) {
+      this.position.set(tx, this.position.y, tz);
+      if (this.direction.x !== 0) this.direction.set(0, 0, 1);
+      else this.direction.set(1, 0, 0);
+      this._dropTrailUpTo(this.position.clone());
+      this.lastCornerPos = this.position.clone();
+      this.cornerIndex += 1;
+      this._triggerOverlappingMarkers();
+      this.onEvent({ type: "turn", position: this.position.clone() });
+    }
+  }
+
   handleTap() {
     if (this.state === "ready") {
       this.start();
       return;
     }
+    if (this.autoPlay && this.state === "playing") return;
     if (this.state !== "playing") return;
     if (!this._isOnPath(this.position)) return;
     if (this.direction.x !== 0) {
@@ -690,6 +734,7 @@ export class DancingLineGame {
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("keydown", this._onKeyDown);
     this.canvas.removeEventListener("pointerdown", this._onPointerDown);
+    if (this.composer) { this.composer.dispose(); this.composer = null; }
     this.renderer.dispose();
     this.scene.traverse((obj) => {
       if (obj.geometry) obj.geometry.dispose();
@@ -705,7 +750,8 @@ export class DancingLineGame {
     const dt = this._lastTs ? Math.min((ts - this._lastTs) / 1000, 0.05) : 0;
     this._lastTs = ts;
     this._update(dt);
-    this.renderer.render(this.scene, this.camera);
+    if (this.composer) this.composer.render(dt);
+    else this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(this._frame);
   }
 
@@ -713,6 +759,8 @@ export class DancingLineGame {
     const t = ts(this);
 
     if (this.state === "playing" && dt > 0) {
+      if (this.autoPlay) this._autoTurn();
+
       const speed = this.level.tempo;
       this.position.x += this.direction.x * speed * dt;
       this.position.z += this.direction.z * speed * dt;

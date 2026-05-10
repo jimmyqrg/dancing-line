@@ -4,16 +4,16 @@
     "tempo": 7,
     "trailWidth": 0.32,
     "theme": {
-      "sky": "#c99b36",
-      "ground": "#c99b36",
+      "sky": "#584709",
+      "ground": "#584709",
       "tileTop": "#dacb81",
       "tileSide": "#837a4d",
-      "line": "#584709",
-      "glow": "#584709",
+      "line": "#c99b36",
+      "glow": "#c99b36",
       "fogNear": 16,
       "fogFar": 90,
       "ambient": "#654e1b",
-      "key": "#584709",
+      "key": "#c99b36",
       "decor": "#998e5a"
     },
     "start": {
