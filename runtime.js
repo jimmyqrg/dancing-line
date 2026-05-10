@@ -413,18 +413,18 @@ export class DancingLineGame {
   }
 
   _updateCameraTargets() {
-    // Camera behind the player along the (-1, 0, -1) diagonal, elevated
+    // Camera offset: more in -x than -z so the path (which goes +x and +z)
+    // extends toward center-top of screen instead of hard-right
     this._camTargetPos = new THREE.Vector3(
-      this.position.x - CAM_DISTANCE,
+      this.position.x - CAM_DISTANCE * 1.3,
       CAM_HEIGHT,
-      this.position.z - CAM_DISTANCE
+      this.position.z - CAM_DISTANCE * 0.4
     );
-    // Look directly at the player — the player appears at center of screen
-    // with the path stretching ahead into the distance
+    // Look slightly ahead along the diagonal so player is in lower-center
     this._camTargetLook = new THREE.Vector3(
-      this.position.x,
+      this.position.x + 2,
       0,
-      this.position.z
+      this.position.z + 2
     );
   }
 
