@@ -322,6 +322,67 @@
         box-shadow: 0 0 36px rgba(255, 255, 255, 0.4);
       }
 
+      .test-btn {
+        position: absolute;
+        bottom: 1.2rem;
+        right: 1.5rem;
+        padding: 0.45rem 1.2rem;
+        font-family: inherit;
+        font-size: 0.75rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--ink);
+        background: rgba(255,255,255,0.08);
+        border: 1px solid var(--ink-faint);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 200ms;
+      }
+      .test-btn:hover { background: rgba(255,255,255,0.18); }
+
+      .test-modal {
+        position: fixed; inset: 0; z-index: 50;
+        display: none; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 1rem;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(6px);
+        padding: 2rem;
+      }
+      .test-modal.is-active { display: flex; }
+      .test-modal__title {
+        font-size: 1.2rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+      .test-modal__input {
+        width: min(85vw, 600px);
+        height: 40vh;
+        font-family: monospace;
+        font-size: 0.8rem;
+        background: #1a1a1a;
+        color: #aaffcc;
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 1rem;
+        resize: vertical;
+      }
+      .test-modal__actions { display: flex; gap: 1rem; }
+      .test-modal__btn {
+        padding: 0.55rem 1.6rem;
+        font-family: inherit;
+        font-size: 0.85rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #eee;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 200ms;
+      }
+      .test-modal__btn:hover { background: rgba(255,255,255,0.2); }
+
       .ico {
         width: 2.6rem;
         height: 2.6rem;
@@ -799,8 +860,19 @@
           <button class="play-cta" data-play aria-label="Play level">
             <svg class="icon"><use href="#i-play" /></svg>
           </button>
+          <button class="test-btn" data-test-open aria-label="Test custom level">Test</button>
         </footer>
       </section>
+
+      <!-- Test level modal -->
+      <div class="test-modal" data-test-modal>
+        <h3 class="test-modal__title">Test Level</h3>
+        <textarea class="test-modal__input" data-test-json placeholder="Paste level JSON here..."></textarea>
+        <div class="test-modal__actions">
+          <button class="test-modal__btn" data-test-play>Play</button>
+          <button class="test-modal__btn" data-test-close>Cancel</button>
+        </div>
+      </div>
 
       <!-- Game / HUD -->
       <section class="screen game" data-screen="game" aria-label="Now playing">
@@ -1518,6 +1590,45 @@
       document.querySelector("[data-die-quit]").addEventListener("click", quitToSelect);
       document.querySelector("[data-win-restart]").addEventListener("click", restartCurrent);
       document.querySelector("[data-win-quit]").addEventListener("click", quitToSelect);
+
+      // Test level modal
+      const testModal = document.querySelector("[data-test-modal]");
+      const testJsonEl = document.querySelector("[data-test-json]");
+      document.querySelector("[data-test-open]").addEventListener("click", () => {
+        testModal.classList.add("is-active");
+      });
+      document.querySelector("[data-test-close]").addEventListener("click", () => {
+        testModal.classList.remove("is-active");
+      });
+      document.querySelector("[data-test-play]").addEventListener("click", () => {
+        let data;
+        try {
+          data = JSON.parse(testJsonEl.value);
+        } catch (e) {
+          alert("Invalid JSON: " + e.message);
+          return;
+        }
+        testModal.classList.remove("is-active");
+        gameTitleEl.textContent = data.name || "Test Level";
+        gemsEl.textContent = "0";
+        progressEl.style.width = "0%";
+        showModal(pauseModal, false);
+        showModal(dieModal, false);
+        showModal(winModal, false);
+        dieVignette.classList.remove("is-active");
+        canvas.style.display = "none";
+        gameCanvas.style.display = "block";
+        destroyGame();
+        game = new DancingLineGame({
+          canvas: gameCanvas,
+          level: data,
+          audioPlay: sound,
+          onEvent: handleGameEvent,
+          musicUrl: data.audio || null,
+        });
+        showScreen("game");
+        tapPrompt.classList.add("is-active");
+      });
 
       function togglePause(force) {
         if (!game) return;

@@ -315,9 +315,9 @@ function initScene(bgColor, pathColor, lineColor) {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Camera: 45-degree isometric behind the player
-  camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 200);
-  camera.position.set(8, 9, 8);
+  // Camera: behind the player looking forward (player moves away from camera)
+  camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 250);
+  camera.position.set(-8, 7, -8);
   camera.lookAt(0, 0, 0);
 
   // Groups
@@ -326,17 +326,17 @@ function initScene(bgColor, pathColor, lineColor) {
   trailGroup = new THREE.Group();
   scene.add(trailGroup);
 
-  // Player cube
-  const playerGeom = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+  // Player head — same size and color as trail
+  const playerGeom = new THREE.BoxGeometry(0.5, 0.28, 0.5);
   const playerMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
+    color: new THREE.Color(lineColor),
     emissive: new THREE.Color(lineColor),
-    emissiveIntensity: 0.5,
-    roughness: 0.4,
+    emissiveIntensity: 0.4,
+    roughness: 0.45,
   });
   playerMesh = new THREE.Mesh(playerGeom, playerMat);
   playerMesh.castShadow = true;
-  playerMesh.position.set(0, 0.3, 0);
+  playerMesh.position.set(0, 0.14, 0);
   scene.add(playerMesh);
 
   window.addEventListener("resize", onResize);
@@ -371,14 +371,15 @@ function buildPathMesh(axis, length, width, startX, startZ) {
   const w = widthScale(width);
   const geom = new THREE.BoxGeometry(
     axis === "x" ? length : w,
-    0.18,
+    0.12,
     axis === "z" ? length : w
   );
   const mesh = new THREE.Mesh(geom, pathMaterial);
   mesh.receiveShadow = true;
+  // Center the path on the line (player travels along the center)
   const cx = startX + (axis === "x" ? length / 2 : 0);
   const cz = startZ + (axis === "z" ? length / 2 : 0);
-  mesh.position.set(cx, -0.16, cz);
+  mesh.position.set(cx, -0.06, cz);
   return mesh;
 }
 
@@ -468,15 +469,15 @@ function startEditor() {
     roughness: 0.45,
   });
 
-  // Commit the starting straight segment
+  // Commit the starting straight segment (uses currentWidth, default 1)
   segments.push({ axis: "x", length: startLength, width: currentWidth });
   pos.x = startLength;
   rebuildPath();
   segCountEl.textContent = "Segments: 1";
 
-  // Position camera and player at end of start segment
-  playerMesh.position.set(pos.x, 0.3, pos.z);
-  camera.position.set(pos.x + 8, 9, pos.z + 8);
+  // Position camera BEHIND player and player at end of start segment
+  playerMesh.position.set(pos.x, 0.14, pos.z);
+  camera.position.set(pos.x - 8, 7, pos.z - 8);
   camera.lookAt(pos.x, 0, pos.z);
 
   // Trail for starting segment
@@ -586,19 +587,20 @@ function loop(now) {
   const headZ = pos.z + (direction === "z" ? currentSegLength : 0);
 
   // Update player
-  playerMesh.position.set(headX, 0.3, headZ);
+  playerMesh.position.set(headX, 0.14, headZ);
 
   // Live trail from last commit to head
-  // (we'll just update a "live" mesh)
   updateLiveTrail(headX, headZ);
 
   // Live path preview
   updateLivePath(headX, headZ);
 
-  // Camera: follow behind at 45-degree isometric offset
-  const camTarget = new THREE.Vector3(headX + 8, 9, headZ + 8);
-  camera.position.lerp(camTarget, Math.min(1, dt * 4));
-  camera.lookAt(headX, 0, headZ);
+  // Camera: behind the player (player moves away from camera), very smooth
+  const camTarget = new THREE.Vector3(headX - 8, 7, headZ - 8);
+  const smoothFactor = 1 - Math.pow(0.01, dt); // exponential smoothing, ~frame-independent
+  camera.position.lerp(camTarget, smoothFactor);
+  const lookTarget = new THREE.Vector3(headX, 0, headZ);
+  camera.lookAt(lookTarget);
 
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
@@ -630,14 +632,14 @@ function updateLivePath(headX, headZ) {
   const w = widthScale(currentWidth);
   const geom = new THREE.BoxGeometry(
     direction === "x" ? len : w,
-    0.18,
+    0.12,
     direction === "z" ? len : w
   );
   livePathMesh = new THREE.Mesh(geom, pathMaterial);
   livePathMesh.receiveShadow = true;
   const cx = pos.x + (direction === "x" ? len / 2 : 0);
   const cz = pos.z + (direction === "z" ? len / 2 : 0);
-  livePathMesh.position.set(cx, -0.16, cz);
+  livePathMesh.position.set(cx, -0.06, cz);
   scene.add(livePathMesh);
 }
 </script>
