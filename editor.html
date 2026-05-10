@@ -49,8 +49,7 @@
       background: transparent;
     }
     .setup-row input[type="number"],
-    .setup-row input[type="url"] {
-      width: 220px;
+    .setup-row select {
       padding: 0.4rem 0.7rem;
       font-family: inherit;
       font-size: 0.9rem;
@@ -59,6 +58,7 @@
       border: 1px solid #444;
       border-radius: 4px;
     }
+    .setup-row select { width: 220px; }
     .setup-row input[type="number"] { width: 80px; }
 
     #start-btn {
@@ -193,8 +193,18 @@
     <input type="number" id="start-length" value="8" min="1" max="50">
   </div>
   <div class="setup-row">
-    <label>Music URL</label>
-    <input type="url" id="music-url" placeholder="https://... .mp3">
+    <label>Music</label>
+    <select id="music-select">
+      <option value="">None</option>
+      <option value="https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/beginning.mp3">The Beginning</option>
+      <option value="https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/piano.mp3">The Piano</option>
+      <option value="https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/winter.mp3">The Winter</option>
+      <option value="https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/desert.mp3">The Desert</option>
+      <option value="https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/storm.mp3">The Storm</option>
+      <option value="https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/chaos.mp3">The Chaos</option>
+      <option value="__upload__">Upload file...</option>
+    </select>
+    <input type="file" id="music-file" accept="audio/*" style="display:none">
   </div>
   <button id="start-btn">Start Drawing</button>
 </div>
@@ -230,7 +240,8 @@
   const colPath = document.getElementById("col-path");
   const colLine = document.getElementById("col-line");
   const startLengthEl = document.getElementById("start-length");
-  const musicUrlEl = document.getElementById("music-url");
+  const musicSelect = document.getElementById("music-select");
+  const musicFileEl = document.getElementById("music-file");
   const startBtn = document.getElementById("start-btn");
   const finishBtn = document.getElementById("finish-btn");
   const widthDisplay = document.getElementById("width-display");
@@ -253,7 +264,53 @@
   let camera = { x: 0, z: 0 };
   let startLength = 8;
 
-  const TILE = 20;
+  const TILE = 22;
+
+  // Width 1=1x, 9=5x — exponential curve
+  function widthScale(w) {
+    return Math.pow(5, (w - 1) / 8);
+  }
+
+  let uploadedMusicBlob = null;
+  const STORAGE_KEY = "dl-editor-settings";
+
+  function saveSettings() {
+    const data = {
+      bg: colBg.value,
+      path: colPath.value,
+      line: colLine.value,
+      startLength: startLengthEl.value,
+      music: musicSelect.value === "__upload__" ? "" : musicSelect.value
+    };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.bg) colBg.value = data.bg;
+      if (data.path) colPath.value = data.path;
+      if (data.line) colLine.value = data.line;
+      if (data.startLength) startLengthEl.value = data.startLength;
+      if (data.music) musicSelect.value = data.music;
+    } catch (_) {}
+  }
+
+  loadSettings();
+
+  musicSelect.addEventListener("change", () => {
+    if (musicSelect.value === "__upload__") {
+      musicFileEl.click();
+    }
+    uploadedMusicBlob = null;
+  });
+  musicFileEl.addEventListener("change", () => {
+    if (musicFileEl.files.length > 0) {
+      uploadedMusicBlob = URL.createObjectURL(musicFileEl.files[0]);
+    }
+  });
 
   startBtn.addEventListener("click", startEditor);
   finishBtn.addEventListener("click", finish);
@@ -269,11 +326,19 @@
   });
 
   function startEditor() {
+    saveSettings();
     bgColor = colBg.value;
     pathColor = colPath.value;
     lineColor = colLine.value;
     startLength = Math.max(1, parseInt(startLengthEl.value) || 8);
-    musicUrl = musicUrlEl.value.trim();
+
+    if (musicSelect.value === "__upload__" && uploadedMusicBlob) {
+      musicUrl = uploadedMusicBlob;
+    } else if (musicSelect.value && musicSelect.value !== "__upload__") {
+      musicUrl = musicSelect.value;
+    } else {
+      musicUrl = "";
+    }
 
     setupEl.classList.add("hidden");
     editorEl.classList.add("active");
@@ -324,16 +389,15 @@
       turn();
     } else if (e.key >= "1" && e.key <= "9") {
       currentWidth = parseInt(e.key);
-      widthDisplay.textContent = "Width: " + currentWidth;
+      widthDisplay.textContent = "Width: " + currentWidth + " (" + widthScale(currentWidth).toFixed(1) + "x)";
     } else if (e.key === "Escape") {
       finish();
     }
   }
 
   function commitSegment() {
-    if (currentSegLength < 1) return;
-    const len = Math.round(currentSegLength);
-    if (len < 1) return;
+    if (currentSegLength < 0.1) return;
+    const len = Math.round(currentSegLength * 10) / 10;
     segments.push({ axis: direction, length: len, width: currentWidth });
     pos.x += direction === "x" ? len : 0;
     pos.z += direction === "z" ? len : 0;
@@ -381,7 +445,13 @@
       totalSegments: segs.length,
       totalTiles: segs.reduce((s, seg) => s + seg.length, 0)
     };
-    if (musicUrl) result.audio = musicUrl;
+    if (musicUrl) {
+      if (musicUrl.startsWith("blob:") && musicFileEl.files.length > 0) {
+        result.audio = musicFileEl.files[0].name;
+      } else {
+        result.audio = musicUrl;
+      }
+    }
     return result;
   }
 
@@ -402,64 +472,62 @@
 
     currentSegLength += speed * dt;
 
-    // Compute current head position
     const headX = pos.x + (direction === "x" ? currentSegLength : 0);
     const headZ = pos.z + (direction === "z" ? currentSegLength : 0);
 
-    // Smooth camera follow
-    const targetCamX = headX;
-    const targetCamZ = headZ;
-    camera.x += (targetCamX - camera.x) * Math.min(1, dt * 3);
-    camera.z += (targetCamZ - camera.z) * Math.min(1, dt * 3);
+    // Smooth camera follow (no wobble — use tight lerp)
+    camera.x += (headX - camera.x) * Math.min(1, dt * 5);
+    camera.z += (headZ - camera.z) * Math.min(1, dt * 5);
 
     draw(headX, headZ);
     requestAnimationFrame(loop);
+  }
+
+  // Isometric projection: 45-degree rotation, foreshortened Z (simulates ~45 deg camera pitch)
+  function toScreen(tx, tz, camX, camZ, cx, cy) {
+    const rx = tx - camX;
+    const rz = tz - camZ;
+    // Rotate 45 degrees so line always goes diagonally on screen
+    const cos45 = 0.7071;
+    const isoX = (rx - rz) * cos45;
+    const isoY = (rx + rz) * cos45 * 0.5; // foreshorten Y for ~45 deg pitch
+    return {
+      x: cx + isoX * TILE,
+      y: cy + isoY * TILE
+    };
   }
 
   function draw(headX, headZ) {
     const W = canvasEl.width;
     const H = canvasEl.height;
     const cx = W / 2;
-    const cy = H / 2;
+    const cy = H * 0.55; // slightly below center for "behind and above" feel
 
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, W, H);
 
-    function toScreen(tx, tz) {
-      return {
-        x: cx + (tx - camera.x) * TILE,
-        y: cy + (tz - camera.z) * TILE
-      };
+    function scr(tx, tz) {
+      return toScreen(tx, tz, camera.x, camera.z, cx, cy);
     }
 
-    // Draw committed segments
+    // Draw committed path segments
     ctx.lineCap = "square";
+    ctx.lineJoin = "miter";
     let drawPos = { x: 0, z: 0 };
     for (const seg of segments) {
-      const from = toScreen(drawPos.x, drawPos.z);
+      const from = scr(drawPos.x, drawPos.z);
       const endX = drawPos.x + (seg.axis === "x" ? seg.length : 0);
       const endZ = drawPos.z + (seg.axis === "z" ? seg.length : 0);
-      const to = toScreen(endX, endZ);
+      const to = scr(endX, endZ);
 
       ctx.strokeStyle = pathColor;
-      ctx.lineWidth = seg.width * TILE * 0.9;
-      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = widthScale(seg.width) * TILE * 0.9;
+      ctx.globalAlpha = 0.3;
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       ctx.lineTo(to.x, to.y);
       ctx.stroke();
       ctx.globalAlpha = 1;
-
-      // Width label at midpoint
-      if (seg.width > 1) {
-        const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
-        ctx.fillStyle = pathColor;
-        ctx.globalAlpha = 0.4;
-        ctx.font = "11px monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(seg.width.toString(), mid.x, mid.y - seg.width * TILE * 0.45 - 4);
-        ctx.globalAlpha = 1;
-      }
 
       drawPos.x = endX;
       drawPos.z = endZ;
@@ -467,11 +535,11 @@
 
     // Draw current (in-progress) segment
     {
-      const from = toScreen(pos.x, pos.z);
-      const to = toScreen(headX, headZ);
+      const from = scr(pos.x, pos.z);
+      const to = scr(headX, headZ);
       ctx.strokeStyle = pathColor;
-      ctx.lineWidth = currentWidth * TILE * 0.9;
-      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = widthScale(currentWidth) * TILE * 0.9;
+      ctx.globalAlpha = 0.3;
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       ctx.lineTo(to.x, to.y);
@@ -479,26 +547,27 @@
       ctx.globalAlpha = 1;
     }
 
-    // Draw the "line" trail as a thick solid bar (like cubes forming a path)
-    const cubeSize = TILE * 0.55;
+    // Draw the player line trail (thick cubes)
+    const cubeSize = TILE * 0.5;
     drawPos = { x: 0, z: 0 };
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = cubeSize;
     ctx.lineCap = "square";
+    ctx.lineJoin = "miter";
     ctx.globalAlpha = 0.95;
     ctx.beginPath();
-    const startPt = toScreen(0, 0);
+    const startPt = scr(0, 0);
     ctx.moveTo(startPt.x, startPt.y);
     for (const seg of segments) {
       const endX = drawPos.x + (seg.axis === "x" ? seg.length : 0);
       const endZ = drawPos.z + (seg.axis === "z" ? seg.length : 0);
-      const to = toScreen(endX, endZ);
+      const to = scr(endX, endZ);
       ctx.lineTo(to.x, to.y);
       drawPos.x = endX;
       drawPos.z = endZ;
     }
-    const headScreen = toScreen(headX, headZ);
-    ctx.lineTo(headScreen.x, headScreen.y);
+    const headScr = scr(headX, headZ);
+    ctx.lineTo(headScr.x, headScr.y);
     ctx.stroke();
     ctx.globalAlpha = 1;
 
@@ -506,20 +575,20 @@
     const half = cubeSize * 0.6;
     ctx.fillStyle = lineColor;
     ctx.shadowColor = lineColor;
-    ctx.shadowBlur = 14;
-    ctx.fillRect(headScreen.x - half, headScreen.y - half, half * 2, half * 2);
+    ctx.shadowBlur = 16;
+    ctx.fillRect(headScr.x - half, headScr.y - half, half * 2, half * 2);
     ctx.shadowBlur = 0;
 
-    // Draw corner dots
+    // Draw corner markers
     drawPos = { x: 0, z: 0 };
     for (const seg of segments) {
       const endX = drawPos.x + (seg.axis === "x" ? seg.length : 0);
       const endZ = drawPos.z + (seg.axis === "z" ? seg.length : 0);
-      const p = toScreen(endX, endZ);
+      const p = scr(endX, endZ);
       ctx.fillStyle = lineColor;
-      ctx.globalAlpha = 0.4;
+      ctx.globalAlpha = 0.35;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
       drawPos.x = endX;
