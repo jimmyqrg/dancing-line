@@ -49,12 +49,15 @@ class MusicPlayer {
 
 const TURN_TOLERANCE = 0.6;
 const FALL_GRAVITY = 22;
-const TRAIL_HEIGHT = 0.32;
-const PLAYER_SIZE = 0.7;
+const TRAIL_HEIGHT = 0.28;
+const PLAYER_SIZE = 0.28;
 const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
 const DEATH_FLASH_DURATION = 0.7;
 const OFF_PATH_GRACE = 0.15;
+const CAM_HEIGHT = 10;
+const CAM_BACK = 12;
+const CAM_LOOK_AHEAD = 4;
 
 function widthScale(w) { return Math.pow(5, (w - 1) / 8); }
 
@@ -123,13 +126,14 @@ export class DancingLineGame {
     dir.castShadow = true;
     dir.shadow.mapSize.set(2048, 2048);
     dir.shadow.camera.near = 1;
-    dir.shadow.camera.far = 120;
-    dir.shadow.camera.left = -40;
-    dir.shadow.camera.right = 40;
-    dir.shadow.camera.top = 40;
-    dir.shadow.camera.bottom = -40;
+    dir.shadow.camera.far = 200;
+    dir.shadow.camera.left = -60;
+    dir.shadow.camera.right = 60;
+    dir.shadow.camera.top = 60;
+    dir.shadow.camera.bottom = -60;
     dir.shadow.bias = -0.0005;
     this.scene.add(dir);
+    this.scene.add(dir.target);
     this.dirLight = dir;
 
     const groundMat = new THREE.MeshStandardMaterial({
@@ -137,7 +141,7 @@ export class DancingLineGame {
       roughness: 0.95,
       metalness: 0,
     });
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), groundMat);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.5;
     ground.receiveShadow = true;
@@ -365,7 +369,7 @@ export class DancingLineGame {
     });
     const player = new THREE.Mesh(playerGeom, playerMat);
     player.castShadow = true;
-    player.position.set(this.level.start.x * tile, PLAYER_SIZE / 2, this.level.start.z * tile);
+    player.position.set(this.level.start.x * tile, PLAYER_SIZE / 2 + 0.01, this.level.start.z * tile);
     this.scene.add(player);
     this.player = player;
 
@@ -392,7 +396,7 @@ export class DancingLineGame {
 
     this.position = new THREE.Vector3(
       this.level.start.x * tile,
-      PLAYER_SIZE / 2,
+      PLAYER_SIZE / 2 + 0.01,
       this.level.start.z * tile,
     );
     this.lastCornerPos = this.position.clone();
@@ -407,10 +411,35 @@ export class DancingLineGame {
 
   _initCamera() {
     const aspect = window.innerWidth / window.innerHeight;
-    this.camera = new THREE.PerspectiveCamera(38, aspect, 0.1, 200);
-    this.cameraOffset = new THREE.Vector3(8, 9, 8);
-    this.camera.position.copy(this.position).add(this.cameraOffset);
-    this.camera.lookAt(this.position);
+    this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 300);
+
+    // Camera behind the player relative to starting direction
+    this._camPos = new THREE.Vector3();
+    this._camLook = new THREE.Vector3();
+    this._updateCameraTargets();
+    this._camPos.copy(this._camTargetPos);
+    this._camLook.copy(this._camTargetLook);
+    this.camera.position.copy(this._camPos);
+    this.camera.lookAt(this._camLook);
+  }
+
+  _updateCameraTargets() {
+    const dir = this.direction;
+    // Camera sits behind the player: offset is -direction * CAM_BACK, elevated by CAM_HEIGHT
+    // Also offset diagonally for the isometric Dancing Line feel
+    const backX = -dir.x * CAM_BACK + -dir.z * CAM_BACK * 0.5;
+    const backZ = -dir.z * CAM_BACK + -dir.x * CAM_BACK * 0.5;
+    this._camTargetPos = new THREE.Vector3(
+      this.position.x + backX,
+      CAM_HEIGHT,
+      this.position.z + backZ
+    );
+    // Look ahead of the player
+    this._camTargetLook = new THREE.Vector3(
+      this.position.x + dir.x * CAM_LOOK_AHEAD,
+      0,
+      this.position.z + dir.z * CAM_LOOK_AHEAD
+    );
   }
 
   _initInput() {
@@ -507,7 +536,7 @@ export class DancingLineGame {
     seg.receiveShadow = true;
     seg.position.set(
       (start.x + pos.x) / 2,
-      TRAIL_HEIGHT / 2,
+      TRAIL_HEIGHT / 2 + 0.01,
       (start.z + pos.z) / 2,
     );
     this.trailGroup.add(seg);
@@ -587,7 +616,7 @@ export class DancingLineGame {
     this.distanceTravelled = 0;
     this.position.set(
       this.level.start.x * this.level.tile,
-      PLAYER_SIZE / 2,
+      PLAYER_SIZE / 2 + 0.01,
       this.level.start.z * this.level.tile,
     );
     this.lastCornerPos = this.position.clone();
@@ -598,8 +627,11 @@ export class DancingLineGame {
     this.player.rotation.set(0, 0, 0);
     this.player.material.opacity = 1;
     this.player.material.transparent = false;
-    this.camera.position.copy(this.position).add(this.cameraOffset);
-    this.camera.lookAt(this.position);
+    this._updateCameraTargets();
+    this._camPos.copy(this._camTargetPos);
+    this._camLook.copy(this._camTargetLook);
+    this.camera.position.copy(this._camPos);
+    this.camera.lookAt(this._camLook);
     this.music.stop();
     this.onEvent({ type: "reset" });
   }
@@ -687,11 +719,24 @@ export class DancingLineGame {
   }
 
   _updateCamera(dt) {
-    const desired = new THREE.Vector3().copy(this.position).add(this.cameraOffset);
-    const lerp = Math.min(1, dt * 4.2);
-    this.camera.position.lerp(desired, lerp);
-    const look = new THREE.Vector3(this.position.x, this.position.y, this.position.z);
-    this.camera.lookAt(look);
+    this._updateCameraTargets();
+    // Smooth follow — position lerps steadily, no snapping
+    const s = 1 - Math.pow(0.03, dt);
+    this._camPos.lerp(this._camTargetPos, s);
+    this._camLook.lerp(this._camTargetLook, s);
+    this.camera.position.copy(this._camPos);
+    this.camera.lookAt(this._camLook);
+
+    // Move directional light to follow the player so shadows stay visible
+    if (this.dirLight) {
+      this.dirLight.position.set(
+        this.position.x + 20,
+        30,
+        this.position.z + 12
+      );
+      this.dirLight.target.position.copy(this.position);
+      this.dirLight.target.updateMatrixWorld();
+    }
   }
 }
 
