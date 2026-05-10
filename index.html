@@ -1,1 +1,1186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a1f23" />
+    <title>Dancing Line</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poiret+One&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-far: #0a1f23;
+        --bg-mid: #16524a;
+        --bg-near: #52c5a0;
+        --ink: #ffffff;
+        --ink-soft: rgba(255, 255, 255, 0.72);
+        --ink-faint: rgba(255, 255, 255, 0.36);
+        --line: #f4fff8;
+        --glow: rgba(160, 255, 220, 0.55);
+      }
 
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      body {
+        position: relative;
+        font-family: "Poiret One", system-ui, sans-serif;
+        font-weight: 400;
+        color: var(--ink);
+        background:
+          radial-gradient(120% 80% at 50% 110%, var(--bg-near) 0%, transparent 60%),
+          radial-gradient(90% 60% at 50% -10%, color-mix(in srgb, var(--bg-far) 75%, #000), transparent 70%),
+          linear-gradient(180deg, var(--bg-far), var(--bg-mid) 55%, var(--bg-near));
+        transition: background 750ms ease;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      canvas#scene {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        display: block;
+      }
+
+      .vignette {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        background:
+          radial-gradient(120% 90% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.55) 100%);
+      }
+
+      .stage {
+        position: fixed;
+        inset: 0;
+        z-index: 2;
+      }
+
+      .screen {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 380ms ease, transform 380ms ease;
+        transform: translateY(8px);
+      }
+
+      .screen.is-active {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+
+      button {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      /* ───────── BOOT ───────── */
+
+      .boot {
+        place-items: center;
+        cursor: pointer;
+        padding: 1rem;
+      }
+
+      .boot__inner {
+        text-align: center;
+        transform: translateY(-3vh);
+      }
+
+      .boot__title {
+        font-size: clamp(3.5rem, 14vw, 11rem);
+        letter-spacing: 0.085em;
+        text-transform: uppercase;
+        line-height: 0.92;
+        text-shadow: 0 0 1.8rem rgba(255, 255, 255, 0.22);
+      }
+
+      .boot__rule {
+        display: block;
+        width: clamp(7rem, 18vw, 13rem);
+        height: 2px;
+        margin: 1.6rem auto 1.5rem;
+        background: var(--line);
+        box-shadow: 0 0 18px var(--glow);
+      }
+
+      .boot__prompt {
+        font-size: clamp(0.95rem, 1.6vw, 1.2rem);
+        letter-spacing: 0.5em;
+        text-indent: 0.5em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.35;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      /* ───────── SELECT ───────── */
+
+      .select {
+        grid-template-rows: auto 1fr auto;
+        padding: max(env(safe-area-inset-top), 1.2rem) 1.2rem
+          max(env(safe-area-inset-bottom), 1.5rem);
+      }
+
+      .select__top {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.4rem 0.4rem 0;
+      }
+
+      .select__heading {
+        text-align: center;
+        font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+        letter-spacing: 0.55em;
+        text-indent: 0.55em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+
+      .select__main {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: clamp(0.5rem, 3vw, 2.5rem);
+        padding: 0 clamp(0.5rem, 4vw, 3rem);
+      }
+
+      .select__hero {
+        text-align: center;
+      }
+
+      .select__num {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: clamp(0.95rem, 1.7vw, 1.2rem);
+        letter-spacing: 0.45em;
+        color: var(--ink-faint);
+        margin-bottom: 1.1rem;
+      }
+
+      .select__num i {
+        font-style: normal;
+        opacity: 0.6;
+      }
+
+      .select__name {
+        font-size: clamp(2.6rem, 9.5vw, 8rem);
+        letter-spacing: 0.06em;
+        line-height: 0.95;
+        text-transform: uppercase;
+        text-shadow: 0 0 2rem rgba(255, 255, 255, 0.18);
+        transition: opacity 260ms ease, transform 260ms ease, filter 260ms ease;
+      }
+
+      .select__name.is-swap {
+        opacity: 0;
+        filter: blur(6px);
+        transform: translateY(8px);
+      }
+
+      .select__bottom {
+        display: grid;
+        gap: 1.5rem;
+        justify-items: center;
+        padding-top: 1rem;
+      }
+
+      .dots {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+      }
+
+      .dot {
+        width: 6px;
+        height: 6px;
+        background: var(--ink-faint);
+        transform: rotate(45deg);
+        transition: background 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+      }
+
+      .dot.is-active {
+        background: var(--ink);
+        transform: rotate(45deg) scale(1.6);
+        box-shadow: 0 0 12px var(--ink);
+      }
+
+      .arrow {
+        width: clamp(2.6rem, 5vw, 3.4rem);
+        height: clamp(2.6rem, 5vw, 3.4rem);
+        display: grid;
+        place-items: center;
+        font-size: 1.6rem;
+        line-height: 1;
+        color: var(--ink-soft);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--ink-faint);
+        border-radius: 999px;
+        transition: background 200ms ease, border-color 200ms ease, color 200ms ease,
+          transform 200ms ease;
+      }
+
+      .arrow:hover,
+      .arrow:focus-visible {
+        outline: none;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.12);
+        border-color: var(--ink);
+        transform: scale(1.05);
+      }
+
+      .cta {
+        font-size: clamp(0.95rem, 1.7vw, 1.2rem);
+        letter-spacing: 0.5em;
+        text-indent: 0.5em;
+        text-transform: uppercase;
+        padding: 1rem 3.4rem;
+        color: var(--ink);
+        border: 1px solid var(--ink);
+        border-radius: 999px;
+        transition: background 220ms ease, color 220ms ease, transform 220ms ease,
+          box-shadow 220ms ease;
+      }
+
+      .cta:hover,
+      .cta:focus-visible {
+        outline: none;
+        background: var(--ink);
+        color: var(--bg-far);
+        box-shadow: 0 0 32px rgba(255, 255, 255, 0.4);
+      }
+
+      .ico {
+        width: 2.6rem;
+        height: 2.6rem;
+        display: grid;
+        place-items: center;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--ink-faint);
+        border-radius: 50%;
+        backdrop-filter: blur(8px);
+        transition: background 180ms ease, border-color 180ms ease;
+      }
+
+      .ico:hover,
+      .ico:focus-visible {
+        outline: none;
+        background: rgba(255, 255, 255, 0.18);
+        border-color: var(--ink);
+      }
+
+      .ico.ghost {
+        background: transparent;
+        border-color: transparent;
+        cursor: default;
+      }
+
+      /* ───────── GAME HUD ───────── */
+
+      .game {
+        grid-template-rows: auto 1fr auto;
+      }
+
+      .tap {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+      }
+
+      .hud {
+        position: relative;
+        z-index: 2;
+        display: contents;
+      }
+
+      .hud__top {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 1rem;
+        padding: max(env(safe-area-inset-top), 1.1rem) 1.2rem 0;
+      }
+
+      .hud__name {
+        text-align: center;
+        font-size: clamp(0.9rem, 1.6vw, 1.1rem);
+        letter-spacing: 0.55em;
+        text-indent: 0.55em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+
+      .hud__gems {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        font-size: clamp(1rem, 1.7vw, 1.25rem);
+        letter-spacing: 0.18em;
+        color: var(--ink);
+      }
+
+      .gem {
+        width: 12px;
+        height: 12px;
+        background: var(--ink);
+        transform: rotate(45deg);
+        box-shadow: 0 0 12px var(--ink);
+      }
+
+      .i-pause {
+        position: relative;
+        width: 12px;
+        height: 14px;
+      }
+
+      .i-pause::before,
+      .i-pause::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: currentColor;
+      }
+
+      .i-pause::before {
+        left: 1px;
+      }
+
+      .i-pause::after {
+        right: 1px;
+      }
+
+      .hud__bottom {
+        align-self: end;
+        padding: 0 clamp(1rem, 6vw, 4rem) max(env(safe-area-inset-bottom), 1.4rem);
+      }
+
+      .hud__progress {
+        position: relative;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.18);
+      }
+
+      .hud__progress-fill {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0%;
+        background: var(--ink);
+        box-shadow: 0 0 14px var(--ink);
+        transition: width 90ms linear;
+      }
+
+      .hud__hint {
+        position: absolute;
+        right: 0;
+        bottom: calc(100% + 0.5rem);
+        font-size: 0.78rem;
+        letter-spacing: 0.45em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+      }
+
+      /* ───────── PAUSE MODAL ───────── */
+
+      .modal {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        display: grid;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(14px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 220ms ease;
+      }
+
+      .modal.is-active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .modal__inner {
+        display: grid;
+        gap: 1rem;
+        justify-items: center;
+        text-align: center;
+        padding: 2rem;
+      }
+
+      .modal__title {
+        font-size: clamp(2.2rem, 7vw, 4.6rem);
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        margin-bottom: 1.2rem;
+      }
+
+      .cta--ghost {
+        padding: 0.85rem 3rem;
+        border-color: var(--ink-faint);
+      }
+
+      .cta--ghost:hover,
+      .cta--ghost:focus-visible {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--ink);
+        color: var(--ink);
+        box-shadow: none;
+      }
+
+      /* ───────── TAP RIPPLE ───────── */
+
+      .ripple {
+        position: absolute;
+        width: 90px;
+        height: 90px;
+        margin: -45px 0 0 -45px;
+        border: 2px solid var(--line);
+        border-radius: 50%;
+        opacity: 0.7;
+        pointer-events: none;
+        animation: ripple 520ms ease-out forwards;
+      }
+
+      @keyframes ripple {
+        to {
+          transform: scale(2.4);
+          opacity: 0;
+        }
+      }
+
+      /* ───────── RESPONSIVE ───────── */
+
+      @media (max-width: 600px) {
+        .select__main {
+          padding: 0 0.4rem;
+        }
+
+        .hud__name {
+          letter-spacing: 0.4em;
+        }
+
+        .cta {
+          padding: 0.95rem 2.6rem;
+          letter-spacing: 0.42em;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <main class="stage" aria-live="polite">
+      <!-- Boot screen -->
+      <section class="screen boot is-active" data-screen="boot" tabindex="0">
+        <div class="boot__inner">
+          <h1 class="boot__title">Dancing Line</h1>
+          <span class="boot__rule" aria-hidden="true"></span>
+          <p class="boot__prompt">Tap to start</p>
+        </div>
+      </section>
+
+      <!-- Level select -->
+      <section class="screen select" data-screen="select" aria-label="Level select">
+        <header class="select__top">
+          <button class="ico" data-back-boot aria-label="Back to title">&lsaquo;</button>
+          <p class="select__heading">Select Level</p>
+          <span class="ico ghost" aria-hidden="true"></span>
+        </header>
+
+        <div class="select__main">
+          <button class="arrow" data-prev aria-label="Previous level">&lsaquo;</button>
+          <div class="select__hero">
+            <p class="select__num">
+              <span data-num>01</span><i>/</i><span data-total>06</span>
+            </p>
+            <h2 class="select__name" data-name>The Beginning</h2>
+          </div>
+          <button class="arrow" data-next aria-label="Next level">&rsaquo;</button>
+        </div>
+
+        <footer class="select__bottom">
+          <div class="dots" data-dots></div>
+          <button class="cta" data-play>Play</button>
+        </footer>
+      </section>
+
+      <!-- Game / HUD -->
+      <section class="screen game" data-screen="game" aria-label="Now playing">
+        <div class="tap" data-tap aria-hidden="true"></div>
+
+        <div class="hud__top">
+          <button class="ico" data-pause aria-label="Pause">
+            <span class="i-pause" aria-hidden="true"></span>
+          </button>
+          <p class="hud__name" data-game-title>The Beginning</p>
+          <div class="hud__gems">
+            <span class="gem" aria-hidden="true"></span><span data-gems>0</span>
+          </div>
+        </div>
+
+        <div></div>
+
+        <div class="hud__bottom">
+          <div class="hud__progress">
+            <span class="hud__hint">Tap to turn</span>
+            <div class="hud__progress-fill" data-progress></div>
+          </div>
+        </div>
+
+        <div class="modal" data-pause-modal aria-hidden="true">
+          <div class="modal__inner">
+            <h3 class="modal__title">Paused</h3>
+            <button class="cta cta--ghost" data-resume>Resume</button>
+            <button class="cta cta--ghost" data-restart>Restart</button>
+            <button class="cta cta--ghost" data-quit>Levels</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      // ─────────────────────────────────────────────────────────────
+      // Levels
+      // ─────────────────────────────────────────────────────────────
+
+      const LEVELS = [
+        {
+          id: "beginning",
+          name: "The Beginning",
+          seed: 7,
+          bg: ["#0a1f23", "#16524a", "#52c5a0"],
+          line: "#f4fff8",
+          glow: "rgba(160, 255, 220, 0.55)",
+          tileTop: "rgba(255, 255, 255, 0.18)",
+          tileSide1: "rgba(0, 0, 0, 0.45)",
+          tileSide2: "rgba(0, 0, 0, 0.28)",
+        },
+        {
+          id: "piano",
+          name: "The Piano",
+          seed: 19,
+          bg: ["#06080f", "#161e34", "#5d7bb6"],
+          line: "#f6f9ff",
+          glow: "rgba(170, 200, 255, 0.55)",
+          tileTop: "rgba(255, 255, 255, 0.16)",
+          tileSide1: "rgba(0, 0, 0, 0.55)",
+          tileSide2: "rgba(0, 0, 0, 0.35)",
+        },
+        {
+          id: "winter",
+          name: "The Winter",
+          seed: 31,
+          bg: ["#0b2230", "#3d7fa3", "#cdf0ff"],
+          line: "#ffffff",
+          glow: "rgba(180, 230, 255, 0.65)",
+          tileTop: "rgba(255, 255, 255, 0.28)",
+          tileSide1: "rgba(0, 30, 60, 0.45)",
+          tileSide2: "rgba(0, 30, 60, 0.28)",
+        },
+        {
+          id: "desert",
+          name: "The Desert",
+          seed: 47,
+          bg: ["#27130b", "#a14e1f", "#f0b766"],
+          line: "#fff4d6",
+          glow: "rgba(255, 200, 120, 0.55)",
+          tileTop: "rgba(255, 230, 180, 0.18)",
+          tileSide1: "rgba(60, 20, 0, 0.5)",
+          tileSide2: "rgba(60, 20, 0, 0.32)",
+        },
+        {
+          id: "storm",
+          name: "The Storm",
+          seed: 61,
+          bg: ["#070918", "#1f2670", "#8674dc"],
+          line: "#ecebff",
+          glow: "rgba(160, 170, 255, 0.6)",
+          tileTop: "rgba(220, 220, 255, 0.16)",
+          tileSide1: "rgba(0, 0, 30, 0.55)",
+          tileSide2: "rgba(0, 0, 30, 0.32)",
+        },
+        {
+          id: "chaos",
+          name: "The Chaos",
+          seed: 89,
+          bg: ["#1a0410", "#8d1235", "#ec3f77"],
+          line: "#ffeaf2",
+          glow: "rgba(255, 130, 180, 0.6)",
+          tileTop: "rgba(255, 220, 235, 0.18)",
+          tileSide1: "rgba(40, 0, 10, 0.55)",
+          tileSide2: "rgba(40, 0, 10, 0.32)",
+        },
+      ];
+
+      const audioAssets = {
+        death: "assets/audio/death.wav",
+        victory: "assets/audio/victory.wav",
+      };
+      const sound = (name) => {
+        try {
+          const a = new Audio(audioAssets[name]);
+          a.volume = 0.6;
+          return a.play().catch(() => {});
+        } catch (_) {
+          /* asset not present yet */
+        }
+      };
+
+      // ─────────────────────────────────────────────────────────────
+      // Canvas scene
+      // ─────────────────────────────────────────────────────────────
+
+      const canvas = document.getElementById("scene");
+      const ctx = canvas.getContext("2d");
+
+      let W = window.innerWidth;
+      let H = window.innerHeight;
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      function resize() {
+        W = window.innerWidth;
+        H = window.innerHeight;
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width = W + "px";
+        canvas.style.height = H + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      window.addEventListener("resize", resize);
+      resize();
+
+      function isoTile() {
+        const base = Math.min(W, H) / 26;
+        return Math.max(14, base);
+      }
+
+      function iso(x, y, T) {
+        return { x: (x - y) * T, y: (x + y) * T * 0.5 };
+      }
+
+      function mulberry32(seed) {
+        let a = seed >>> 0;
+        return () => {
+          a = (a + 0x6d2b79f5) >>> 0;
+          let t = a;
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      function makePath(seed, count = 90) {
+        const r = mulberry32(seed);
+        const pts = [{ x: 0, y: 0 }];
+        let dir = 0;
+        let x = 0,
+          y = 0;
+        for (let i = 0; i < count; i++) {
+          const len = 2 + Math.floor(r() * 6);
+          if (dir === 0) x += len;
+          else y += len;
+          pts.push({ x, y });
+          dir = 1 - dir;
+        }
+        return pts;
+      }
+
+      function pathLength(pts) {
+        let s = 0;
+        for (let i = 1; i < pts.length; i++) {
+          s += Math.abs(pts[i].x - pts[i - 1].x) + Math.abs(pts[i].y - pts[i - 1].y);
+        }
+        return s;
+      }
+
+      function pointAt(pts, t) {
+        let acc = 0;
+        for (let i = 1; i < pts.length; i++) {
+          const dx = pts[i].x - pts[i - 1].x;
+          const dy = pts[i].y - pts[i - 1].y;
+          const len = Math.abs(dx) + Math.abs(dy);
+          if (t <= acc + len) {
+            const u = (t - acc) / len;
+            return { x: pts[i - 1].x + dx * u, y: pts[i - 1].y + dy * u };
+          }
+          acc += len;
+        }
+        return pts[pts.length - 1];
+      }
+
+      function tilesAlong(pts) {
+        const seen = new Set();
+        const arr = [];
+        for (let i = 1; i < pts.length; i++) {
+          const a = pts[i - 1],
+            b = pts[i];
+          const sx = Math.sign(b.x - a.x),
+            sy = Math.sign(b.y - a.y);
+          const len = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+          for (let k = 0; k <= len; k++) {
+            const x = a.x + sx * k;
+            const y = a.y + sy * k;
+            const key = x + "," + y;
+            if (!seen.has(key)) {
+              seen.add(key);
+              arr.push({ x, y });
+            }
+          }
+        }
+        arr.sort((p, q) => p.x + p.y - (q.x + q.y));
+        return arr;
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // Scene state
+      // ─────────────────────────────────────────────────────────────
+
+      const MODES = {
+        boot: { focus: 0.55, alpha: 0.55, speed: 1.4 },
+        select: { focus: 0.62, alpha: 0.5, speed: 1.2 },
+        game: { focus: 1.0, alpha: 1.0, speed: 2.6 },
+      };
+
+      const scene = {
+        level: LEVELS[0],
+        path: [],
+        tiles: [],
+        total: 0,
+        progress: 0,
+        camera: { x: 0, y: 0 },
+        zoom: 0.6,
+        alpha: 0.5,
+        speed: 1.2,
+        running: true,
+        flash: 0,
+      };
+
+      function loadLevel(level) {
+        scene.level = level;
+        scene.path = makePath(level.seed);
+        scene.tiles = tilesAlong(scene.path);
+        scene.total = pathLength(scene.path);
+        scene.progress = 0;
+        const start = iso(scene.path[0].x, scene.path[0].y, isoTile());
+        scene.camera.x = start.x;
+        scene.camera.y = start.y;
+        applyTheme(level);
+      }
+
+      function applyTheme(level) {
+        const root = document.documentElement;
+        root.style.setProperty("--bg-far", level.bg[0]);
+        root.style.setProperty("--bg-mid", level.bg[1]);
+        root.style.setProperty("--bg-near", level.bg[2]);
+        root.style.setProperty("--line", level.line);
+        root.style.setProperty("--glow", level.glow);
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", level.bg[0]);
+      }
+
+      function setMode(name) {
+        const m = MODES[name] || MODES.boot;
+        scene.targetZoom = m.focus;
+        scene.targetAlpha = m.alpha;
+        scene.speed = m.speed;
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // Rendering
+      // ─────────────────────────────────────────────────────────────
+
+      function drawTileBlock(c, T, theme) {
+        const dz = Math.max(6, T * 0.32);
+        ctx.fillStyle = theme.tileSide2;
+        ctx.beginPath();
+        ctx.moveTo(c.x + T, c.y);
+        ctx.lineTo(c.x, c.y + T * 0.5);
+        ctx.lineTo(c.x, c.y + T * 0.5 + dz);
+        ctx.lineTo(c.x + T, c.y + dz);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = theme.tileSide1;
+        ctx.beginPath();
+        ctx.moveTo(c.x - T, c.y);
+        ctx.lineTo(c.x, c.y + T * 0.5);
+        ctx.lineTo(c.x, c.y + T * 0.5 + dz);
+        ctx.lineTo(c.x - T, c.y + dz);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = theme.tileTop;
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y - T * 0.5);
+        ctx.lineTo(c.x + T, c.y);
+        ctx.lineTo(c.x, c.y + T * 0.5);
+        ctx.lineTo(c.x - T, c.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawTrail(T, theme, headPt) {
+        const pts = [scene.path[0]];
+        let acc = 0;
+        for (let i = 1; i < scene.path.length; i++) {
+          const a = scene.path[i - 1],
+            b = scene.path[i];
+          const len = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+          if (acc + len <= scene.progress) {
+            pts.push(b);
+            acc += len;
+          } else {
+            pts.push(headPt);
+            break;
+          }
+        }
+
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        ctx.strokeStyle = "rgba(0,0,0,0.32)";
+        ctx.lineWidth = Math.max(6, T * 0.42);
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+          const p = iso(pts[i].x, pts[i].y, T);
+          if (i === 0) ctx.moveTo(p.x, p.y + T * 0.18);
+          else ctx.lineTo(p.x, p.y + T * 0.18);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = theme.line;
+        ctx.lineWidth = Math.max(4, T * 0.3);
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+          const p = iso(pts[i].x, pts[i].y, T);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+
+        return iso(headPt.x, headPt.y, T);
+      }
+
+      function drawHead(p, T, theme) {
+        const r = Math.max(6, T * 0.34);
+
+        const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 4);
+        grd.addColorStop(0, theme.glow);
+        grd.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = grd;
+        ctx.fillRect(p.x - r * 4, p.y - r * 4, r * 8, r * 8);
+
+        ctx.fillStyle = theme.line;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y - r);
+        ctx.lineTo(p.x + r, p.y);
+        ctx.lineTo(p.x, p.y + r);
+        ctx.lineTo(p.x - r, p.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      let last = 0;
+
+      function frame(ts) {
+        const dt = last ? Math.min((ts - last) / 1000, 0.066) : 0;
+        last = ts;
+
+        if (scene.running) {
+          scene.progress += scene.speed * dt;
+          if (scene.progress >= scene.total - 1) {
+            scene.progress = 0;
+            const start = iso(scene.path[0].x, scene.path[0].y, isoTile());
+            scene.camera.x = start.x;
+            scene.camera.y = start.y;
+          }
+        }
+
+        scene.zoom += ((scene.targetZoom ?? scene.zoom) - scene.zoom) * Math.min(1, dt * 4);
+        scene.alpha += ((scene.targetAlpha ?? scene.alpha) - scene.alpha) * Math.min(1, dt * 4);
+        if (scene.flash > 0) scene.flash = Math.max(0, scene.flash - dt * 3);
+
+        const theme = scene.level;
+        ctx.clearRect(0, 0, W, H);
+
+        const T = isoTile() * scene.zoom;
+        const head = pointAt(scene.path, scene.progress);
+        const headIso = iso(head.x, head.y, T);
+
+        scene.camera.x += (headIso.x - scene.camera.x) * Math.min(1, dt * 2.6);
+        scene.camera.y += (headIso.y - scene.camera.y) * Math.min(1, dt * 2.6);
+
+        ctx.save();
+        ctx.globalAlpha = scene.alpha;
+        ctx.translate(W / 2 - scene.camera.x, H * 0.62 - scene.camera.y);
+
+        for (let i = 0; i < scene.tiles.length; i++) {
+          const t = scene.tiles[i];
+          const c = iso(t.x, t.y, T);
+          if (
+            c.x < scene.camera.x - W ||
+            c.x > scene.camera.x + W ||
+            c.y < scene.camera.y - H ||
+            c.y > scene.camera.y + H
+          ) {
+            continue;
+          }
+          drawTileBlock(c, T, theme);
+        }
+
+        const headScreen = drawTrail(T, theme, head);
+        drawHead(headScreen, T, theme);
+
+        ctx.restore();
+
+        if (scene.flash > 0) {
+          ctx.fillStyle = `rgba(255,255,255,${scene.flash * 0.18})`;
+          ctx.fillRect(0, 0, W, H);
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // UI wiring
+      // ─────────────────────────────────────────────────────────────
+
+      const screens = {
+        boot: document.querySelector('[data-screen="boot"]'),
+        select: document.querySelector('[data-screen="select"]'),
+        game: document.querySelector('[data-screen="game"]'),
+      };
+
+      let activeScreen = "boot";
+
+      function showScreen(name) {
+        activeScreen = name;
+        Object.entries(screens).forEach(([k, el]) => {
+          el.classList.toggle("is-active", k === name);
+        });
+        setMode(name);
+      }
+
+      // Boot → select
+      screens.boot.addEventListener("click", () => {
+        showScreen("select");
+      });
+      screens.boot.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          showScreen("select");
+        }
+      });
+
+      // Level pager
+      const numEl = document.querySelector("[data-num]");
+      const totalEl = document.querySelector("[data-total]");
+      const nameEl = document.querySelector("[data-name]");
+      const dotsEl = document.querySelector("[data-dots]");
+      const gameTitleEl = document.querySelector("[data-game-title]");
+      const gemsEl = document.querySelector("[data-gems]");
+      const progressEl = document.querySelector("[data-progress]");
+      const pauseModal = document.querySelector("[data-pause-modal]");
+
+      let currentIdx = 0;
+      totalEl.textContent = String(LEVELS.length).padStart(2, "0");
+
+      LEVELS.forEach((_, i) => {
+        const d = document.createElement("span");
+        d.className = "dot" + (i === 0 ? " is-active" : "");
+        d.addEventListener("click", () => goTo(i));
+        dotsEl.append(d);
+      });
+
+      function goTo(idx, dir = 1) {
+        const next = ((idx % LEVELS.length) + LEVELS.length) % LEVELS.length;
+        if (next === currentIdx) return;
+        currentIdx = next;
+        const lvl = LEVELS[currentIdx];
+
+        nameEl.classList.add("is-swap");
+        setTimeout(() => {
+          nameEl.textContent = lvl.name;
+          nameEl.classList.remove("is-swap");
+        }, 180);
+
+        numEl.textContent = String(currentIdx + 1).padStart(2, "0");
+        dotsEl.querySelectorAll(".dot").forEach((d, i) => {
+          d.classList.toggle("is-active", i === currentIdx);
+        });
+        loadLevel(lvl);
+      }
+
+      document.querySelector("[data-prev]").addEventListener("click", () =>
+        goTo(currentIdx - 1, -1),
+      );
+      document.querySelector("[data-next]").addEventListener("click", () =>
+        goTo(currentIdx + 1, 1),
+      );
+      document.querySelector("[data-back-boot]").addEventListener("click", () => {
+        showScreen("boot");
+      });
+
+      // Keyboard navigation on select screen
+      window.addEventListener("keydown", (e) => {
+        if (activeScreen === "select") {
+          if (e.key === "ArrowLeft") goTo(currentIdx - 1, -1);
+          else if (e.key === "ArrowRight") goTo(currentIdx + 1, 1);
+          else if (e.key === "Enter") startLevel();
+          else if (e.key === "Escape") showScreen("boot");
+        } else if (activeScreen === "game") {
+          if (e.key === "Escape") togglePause();
+          else if (e.key === " ") {
+            e.preventDefault();
+            triggerTap(W / 2, H / 2);
+          }
+        }
+      });
+
+      // Play
+      function startLevel() {
+        const lvl = LEVELS[currentIdx];
+        gameTitleEl.textContent = lvl.name;
+        gemsEl.textContent = "0";
+        progressEl.style.width = "0%";
+        scene.running = true;
+        scene.progress = 0;
+        pauseModal.classList.remove("is-active");
+        showScreen("game");
+      }
+
+      document.querySelector("[data-play]").addEventListener("click", startLevel);
+
+      // Pause modal
+      const pauseBtn = document.querySelector("[data-pause]");
+      pauseBtn.addEventListener("click", togglePause);
+      document.querySelector("[data-resume]").addEventListener("click", () => togglePause(false));
+      document.querySelector("[data-restart]").addEventListener("click", () => {
+        loadLevel(LEVELS[currentIdx]);
+        scene.running = true;
+        gemsEl.textContent = "0";
+        progressEl.style.width = "0%";
+        pauseModal.classList.remove("is-active");
+      });
+      document.querySelector("[data-quit]").addEventListener("click", () => {
+        pauseModal.classList.remove("is-active");
+        scene.running = true;
+        showScreen("select");
+      });
+
+      function togglePause(force) {
+        const next = typeof force === "boolean" ? force : !pauseModal.classList.contains("is-active");
+        pauseModal.classList.toggle("is-active", next);
+        scene.running = !next;
+      }
+
+      // Tap on game screen → tiny ripple, head pulse, gem tick
+      const tapZone = document.querySelector("[data-tap]");
+      let gemCount = 0;
+
+      function triggerTap(x, y) {
+        if (!scene.running) return;
+        const r = document.createElement("span");
+        r.className = "ripple";
+        r.style.left = x + "px";
+        r.style.top = y + "px";
+        screens.game.appendChild(r);
+        setTimeout(() => r.remove(), 540);
+        scene.flash = 0.6;
+        gemCount += 1;
+        gemsEl.textContent = String(gemCount);
+      }
+
+      tapZone.addEventListener("pointerdown", (e) => {
+        triggerTap(e.clientX, e.clientY);
+      });
+
+      // Progress bar tied to scene loop
+      function tickHud() {
+        if (activeScreen === "game" && scene.total > 0) {
+          const pct = (scene.progress / scene.total) * 100;
+          progressEl.style.width = pct.toFixed(2) + "%";
+        }
+        requestAnimationFrame(tickHud);
+      }
+      tickHud();
+
+      // ─────────────────────────────────────────────────────────────
+      // Boot
+      // ─────────────────────────────────────────────────────────────
+
+      loadLevel(LEVELS[0]);
+      setMode("boot");
+      scene.zoom = MODES.boot.focus;
+      scene.alpha = MODES.boot.alpha;
+      requestAnimationFrame(frame);
+      screens.boot.focus();
+
+      // Expose hooks for later mechanics
+      window.DancingLine = {
+        levels: LEVELS,
+        sound,
+        scene,
+      };
+    </script>
+  </body>
+</html>
