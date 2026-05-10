@@ -415,7 +415,11 @@ export class DancingLineGame {
       CAM_OFFSET.y,
       this.position.z + CAM_OFFSET.z
     );
-    this._camLook = new THREE.Vector3(this.position.x, 0, this.position.z);
+    this._camLook = new THREE.Vector3(
+      this.position.x + this.direction.x * 5,
+      0,
+      this.position.z + this.direction.z * 5
+    );
 
     this.camera.position.copy(this._camPos);
     this.camera.lookAt(this._camLook);
@@ -628,7 +632,7 @@ export class DancingLineGame {
     this.player.material.opacity = 1;
     this.player.material.transparent = false;
     this._camPos.set(this.position.x + CAM_OFFSET.x, CAM_OFFSET.y, this.position.z + CAM_OFFSET.z);
-    this._camLook.set(this.position.x, 0, this.position.z);
+    this._camLook.set(this.position.x + this.direction.x * 5, 0, this.position.z + this.direction.z * 5);
     this.camera.position.copy(this._camPos);
     this.camera.lookAt(this._camLook);
     this.music.stop();
@@ -740,12 +744,17 @@ export class DancingLineGame {
   }
 
   _updateCamera(dt) {
+    const lookAhead = 5;
     const targetPos = new THREE.Vector3(
       this.position.x + CAM_OFFSET.x,
       CAM_OFFSET.y,
       this.position.z + CAM_OFFSET.z
     );
-    const targetLook = new THREE.Vector3(this.position.x, 0, this.position.z);
+    const targetLook = new THREE.Vector3(
+      this.position.x + this.direction.x * lookAhead,
+      0,
+      this.position.z + this.direction.z * lookAhead
+    );
 
     const s = 1 - Math.pow(CAM_LERP, dt);
     this._camPos.lerp(targetPos, s);
