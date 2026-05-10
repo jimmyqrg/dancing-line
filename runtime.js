@@ -191,20 +191,23 @@ export class DancingLineGame {
 
     if (this.hasSegmentWidths) {
       // Build axis-aligned bounding rects for each segment for on-path checks
+      // Extend each segment backward by halfW at corners to cover the junction area
       this.pathRects = [];
       let sx = start.x * tile, sz = start.z * tile;
-      for (const seg of lvl.segments) {
+      for (let si = 0; si < lvl.segments.length; si++) {
+        const seg = lvl.segments[si];
         const w = widthScale(seg.width || 1) * tile;
         const halfW = w / 2;
         const len = seg.length * tile;
+        const ext = si === 0 ? 0 : halfW;
         let minX, maxX, minZ, maxZ;
         if (seg.axis === "x") {
-          minX = sx; maxX = sx + len;
+          minX = sx - ext; maxX = sx + len;
           minZ = sz - halfW; maxZ = sz + halfW;
           sx += len;
         } else {
           minX = sx - halfW; maxX = sx + halfW;
-          minZ = sz; maxZ = sz + len;
+          minZ = sz - ext; maxZ = sz + len;
           sz += len;
         }
         this.pathRects.push({ minX, maxX, minZ, maxZ });

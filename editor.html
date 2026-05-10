@@ -598,7 +598,7 @@ function finish() {
 }
 
 function buildJSON() {
-  const segs = segments.map(s => ({ axis: s.axis, length: Math.round(s.length), width: s.width }));
+  const segs = segments.map(s => ({ axis: s.axis, length: Math.round(s.length * 10) / 10, width: s.width }));
   const result = {
     name: "Custom Level",
     tile: 1.0,
