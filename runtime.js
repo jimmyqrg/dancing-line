@@ -103,12 +103,13 @@ export class DancingLineGame {
   _initRenderer() {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: !this.enableGlow,
       alpha: true,
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const maxDpr = this.enableGlow ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+    this.renderer.setPixelRatio(maxDpr);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = !this.enableGlow;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -401,7 +402,7 @@ export class DancingLineGame {
       metalness: 0.1,
     });
     const player = new THREE.Mesh(playerGeom, playerMat);
-    player.castShadow = true;
+    player.castShadow = !this.enableGlow;
     player.position.set(this.level.start.x * tile, PLAYER_SIZE / 2 + 0.01, this.level.start.z * tile);
     this.scene.add(player);
     this.player = player;
@@ -449,10 +450,12 @@ export class DancingLineGame {
 
   _initPostProcessing() {
     if (!this.enableGlow) { this.composer = null; return; }
-    const size = new THREE.Vector2(window.innerWidth, window.innerHeight);
+    const w = window.innerWidth, h = window.innerHeight;
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    const bloom = new UnrealBloomPass(size, 0.6, 0.4, 0.2);
+    const bloomSize = new THREE.Vector2(Math.floor(w / 2), Math.floor(h / 2));
+    const bloom = new UnrealBloomPass(bloomSize, 0.6, 0.4, 0.25);
+    bloom.renderToScreen = true;
     this.composer.addPass(bloom);
     this._bloomPass = bloom;
   }
@@ -475,13 +478,11 @@ export class DancingLineGame {
   start() {
     this.state = "playing";
     this.startedAt = performance.now();
+    const tempo = this.level.tempo || 6;
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
-    const delay = firstLen / (this.level.tempo || 6) + (this.level.audioDelay || 0);
-    if (delay > 0) {
-      setTimeout(() => this.music.play(), delay * 1000);
-    } else {
-      this.music.play();
-    }
+    const baseDelay = 0.476 / tempo;
+    const delay = firstLen / tempo + (this.level.audioDelay || 0) + baseDelay;
+    setTimeout(() => this.music.play(), delay * 1000);
     this.onEvent({ type: "start" });
   }
 
@@ -612,8 +613,8 @@ export class DancingLineGame {
       isX ? w : totalLen,
     );
     const seg = new THREE.Mesh(geom, this.trailMaterial);
-    seg.castShadow = true;
-    seg.receiveShadow = true;
+    seg.castShadow = !this.enableGlow;
+    seg.receiveShadow = !this.enableGlow;
     seg.position.set(
       isX ? (start.x + pos.x) / 2 - (dir * ext) / 2 : start.x,
       TRAIL_HEIGHT / 2 + 0.01,
@@ -747,7 +748,7 @@ export class DancingLineGame {
 
   _frame(ts) {
     if (this._destroyed) return;
-    const dt = this._lastTs ? Math.min((ts - this._lastTs) / 1000, 0.05) : 0;
+    const dt = this._lastTs ? (ts - this._lastTs) / 1000 : 0;
     this._lastTs = ts;
     this._update(dt);
     if (this.composer) this.composer.render(dt);
