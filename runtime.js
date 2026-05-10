@@ -310,19 +310,24 @@ export class DancingLineGame {
     this.scene.add(ring);
     this.finishRing = ring;
 
-    const markerGeom = new THREE.RingGeometry(0.3, 0.45, 4);
-    const markerMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(t.line),
-      transparent: true,
-      opacity: 0.35,
-      side: THREE.DoubleSide,
-    });
+    const markerGeom = new THREE.PlaneGeometry(0.7, 0.7);
+    this.markers = [];
     for (let ci = 1; ci < this.corners.length - 1; ci++) {
       const c = this.corners[ci];
-      const marker = new THREE.Mesh(markerGeom, markerMat);
+      const mat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(t.line),
+        transparent: true,
+        opacity: 0.4,
+        side: THREE.DoubleSide,
+      });
+      const marker = new THREE.Mesh(markerGeom, mat);
       marker.rotation.x = -Math.PI / 2;
+      marker.rotation.z = Math.PI / 4;
       marker.position.set(c.x * tile, 0.02, c.z * tile);
+      marker.userData.triggered = false;
+      marker.userData.animTime = 0;
       this.scene.add(marker);
+      this.markers.push(marker);
     }
 
     const gemGeom = new THREE.OctahedronGeometry(0.32, 0);
@@ -502,6 +507,15 @@ export class DancingLineGame {
     const dx = Math.abs(this.lastCornerPos.x - expected.x);
     const dz = Math.abs(this.lastCornerPos.z - expected.z);
     if (dx <= TURN_TOLERANCE && dz <= TURN_TOLERANCE) {
+      // Trigger the marker animation (cornerIndex is 0-based, markers skip first corner)
+      const markerIdx = this.cornerIndex;
+      if (markerIdx < this.markers.length) {
+        const m = this.markers[markerIdx];
+        m.userData.triggered = true;
+        m.userData.animTime = 0;
+        m.material.color.set(0xffdd00);
+        m.material.opacity = 1.0;
+      }
       this.cornerIndex += 1;
     }
   }
@@ -531,32 +545,17 @@ export class DancingLineGame {
   }
 
   _isOnPath(pos) {
-    const PAD = 0.4;
     if (this.hasSegmentWidths) {
       for (const r of this.pathRects) {
-        if (pos.x >= r.minX - PAD && pos.x <= r.maxX + PAD &&
-            pos.z >= r.minZ - PAD && pos.z <= r.maxZ + PAD) return true;
+        if (pos.x >= r.minX && pos.x <= r.maxX &&
+            pos.z >= r.minZ && pos.z <= r.maxZ) return true;
       }
       return false;
     }
     const tile = this.level.tile;
-    const fx = pos.x / tile;
-    const fz = pos.z / tile;
-    const tx = Math.round(fx);
-    const tz = Math.round(fz);
-    if (this.pathTiles.has(`${tx},${tz}`)) return true;
-    // If the player is near a tile edge, check the adjacent tile in that direction
-    const offX = fx - tx;
-    const offZ = fz - tz;
-    if (Math.abs(offX) > 0.3) {
-      const nx = tx + Math.sign(offX);
-      if (this.pathTiles.has(`${nx},${tz}`)) return true;
-    }
-    if (Math.abs(offZ) > 0.3) {
-      const nz = tz + Math.sign(offZ);
-      if (this.pathTiles.has(`${tx},${nz}`)) return true;
-    }
-    return false;
+    const tx = Math.round(pos.x / tile);
+    const tz = Math.round(pos.z / tile);
+    return this.pathTiles.has(`${tx},${tz}`);
   }
 
   _checkGems() {
@@ -607,6 +606,14 @@ export class DancingLineGame {
       gem.userData.collected = false;
       gem.visible = true;
       gem.position.copy(gem.userData.basePos);
+    }
+    for (const m of this.markers) {
+      m.userData.triggered = false;
+      m.userData.animTime = 0;
+      m.visible = true;
+      m.scale.set(1, 1, 1);
+      m.material.opacity = 0.4;
+      m.material.color.set(this.level.theme.line);
     }
     this.gemsCollected = 0;
     this.state = "ready";
@@ -727,6 +734,18 @@ export class DancingLineGame {
       if (!gem.visible) continue;
       gem.rotation.y += dt * 1.6;
       gem.position.y = gem.userData.basePos.y + Math.sin(t * 2 + gem.position.x) * 0.08;
+    }
+    for (const m of this.markers) {
+      if (!m.userData.triggered) continue;
+      m.userData.animTime += dt;
+      const p = m.userData.animTime / 0.4;
+      if (p >= 1) {
+        m.visible = false;
+      } else {
+        const scale = 1 + p * 3;
+        m.scale.set(scale, scale, 1);
+        m.material.opacity = 1 - p;
+      }
     }
     this._updateCamera(dt);
   }
