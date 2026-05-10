@@ -1028,39 +1028,6 @@
           tileSide2: "rgba(10, 30, 0, 0.3)",
         },
         {
-          id: "taurus",
-          name: "The Taurus",
-          seed: 67,
-          bg: ["#120a1e", "#3a1860", "#a45cd4"],
-          line: "#f4e8ff",
-          glow: "rgba(200, 148, 240, 0.6)",
-          tileTop: "rgba(220, 200, 255, 0.18)",
-          tileSide1: "rgba(20, 0, 40, 0.5)",
-          tileSide2: "rgba(20, 0, 40, 0.3)",
-        },
-        {
-          id: "crystal",
-          name: "The Crystal",
-          seed: 73,
-          bg: ["#0a0e1e", "#1c2848", "#7eb8e0"],
-          line: "#eaf6ff",
-          glow: "rgba(160, 212, 245, 0.6)",
-          tileTop: "rgba(200, 230, 255, 0.18)",
-          tileSide1: "rgba(0, 10, 30, 0.5)",
-          tileSide2: "rgba(0, 10, 30, 0.3)",
-        },
-        {
-          id: "chaos",
-          name: "The Chaos",
-          seed: 89,
-          bg: ["#1a0410", "#8d1235", "#ec3f77"],
-          line: "#ffeaf2",
-          glow: "rgba(255, 130, 180, 0.6)",
-          tileTop: "rgba(255, 220, 235, 0.18)",
-          tileSide1: "rgba(40, 0, 10, 0.55)",
-          tileSide2: "rgba(40, 0, 10, 0.32)",
-        },
-        {
           id: "storm",
           name: "The Storm",
           seed: 61,
@@ -1088,12 +1055,13 @@
       };
 
       let LEVEL_DATA = { levels: {} };
-      try {
-        const res = await fetch("./data.json", { cache: "no-store" });
-        LEVEL_DATA = await res.json();
-      } catch (err) {
-        console.warn("Could not load data.json", err);
-      }
+      const levelFiles = ["beginning", "piano", "ocean", "winter", "desert", "earth", "storm"];
+      await Promise.all(levelFiles.map(async (id) => {
+        try {
+          const res = await fetch(`./levels/${id}.json`, { cache: "no-store" });
+          if (res.ok) LEVEL_DATA.levels[id] = await res.json();
+        } catch (_) {}
+      }));
 
       // ─────────────────────────────────────────────────────────────
       // Menu canvas (2D ambient)

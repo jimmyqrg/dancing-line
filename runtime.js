@@ -55,9 +55,8 @@ const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.3;
-const CAM_HEIGHT = 5;
+const CAM_HEIGHT = 9;
 const CAM_BACK = 8;
-const CAM_SIDE = 3;
 
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
@@ -423,17 +422,15 @@ export class DancingLineGame {
 
   _updateCameraTargets() {
     const dir = this.direction;
-    const perpX = -dir.z;
-    const perpZ = dir.x;
     this._camTargetPos = new THREE.Vector3(
-      this.position.x - dir.x * CAM_BACK + perpX * CAM_SIDE,
+      this.position.x - dir.x * CAM_BACK,
       CAM_HEIGHT,
-      this.position.z - dir.z * CAM_BACK + perpZ * CAM_SIDE
+      this.position.z - dir.z * CAM_BACK
     );
     this._camTargetLook = new THREE.Vector3(
-      this.position.x + dir.x * 5,
-      0.5,
-      this.position.z + dir.z * 5
+      this.position.x + dir.x * 3,
+      -0.5,
+      this.position.z + dir.z * 3
     );
   }
 
