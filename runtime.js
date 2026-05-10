@@ -56,7 +56,6 @@ const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.3;
 const CAM_OFFSET = { x: -10, y: 8, z: -10 };
-const CAM_LERP = 0.0001;
 
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
@@ -135,16 +134,6 @@ export class DancingLineGame {
     this.scene.add(dir.target);
     this.dirLight = dir;
 
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(t.ground),
-      roughness: 0.95,
-      metalness: 0,
-    });
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
   }
 
   _buildPath() {
@@ -315,15 +304,15 @@ export class DancingLineGame {
 
     const darkMarkerLevels = ["The Beginning", "The Piano", "The Winter", "The Desert", "The Earth"];
     const markerColor = darkMarkerLevels.includes(this.level.name) ? 0x000000 : 0xffffff;
+    const hs = PLAYER_SIZE * 0.75;
+    const hi = hs - 0.03;
     const squareShape = new THREE.Shape();
-    const hs = 0.35;
     squareShape.moveTo(-hs, -hs);
     squareShape.lineTo(hs, -hs);
     squareShape.lineTo(hs, hs);
     squareShape.lineTo(-hs, hs);
     squareShape.closePath();
     const hole = new THREE.Path();
-    const hi = hs - 0.06;
     hole.moveTo(-hi, -hi);
     hole.lineTo(hi, -hi);
     hole.lineTo(hi, hi);
@@ -344,7 +333,6 @@ export class DancingLineGame {
       });
       const marker = new THREE.Mesh(markerGeom, mat);
       marker.rotation.x = -Math.PI / 2;
-      marker.rotation.z = Math.PI / 4;
       marker.position.set(c.x * tile, 0.02, c.z * tile);
       marker.userData.triggered = false;
       this.scene.add(marker);
@@ -428,15 +416,12 @@ export class DancingLineGame {
     const aspect = window.innerWidth / window.innerHeight;
     this.camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 300);
 
-    this._camPos = new THREE.Vector3(
+    this.camera.position.set(
       this.position.x + CAM_OFFSET.x,
       CAM_OFFSET.y,
       this.position.z + CAM_OFFSET.z
     );
-    this._camLook = new THREE.Vector3(this.position.x, 0, this.position.z);
-
-    this.camera.position.copy(this._camPos);
-    this.camera.lookAt(this._camLook);
+    this.camera.lookAt(this.position.x, 0, this.position.z);
   }
 
 
@@ -563,18 +548,22 @@ export class DancingLineGame {
     const len = Math.hypot(dx, dz);
     if (len < 0.05) return;
     const w = this.level.trailWidth || 0.32;
+    const ext = w / 2;
+    const totalLen = len + ext;
+    const isX = Math.abs(dx) > Math.abs(dz);
+    const dir = isX ? Math.sign(dx) : Math.sign(dz);
     const geom = new THREE.BoxGeometry(
-      Math.abs(dx) > Math.abs(dz) ? len : w,
+      isX ? totalLen : w,
       TRAIL_HEIGHT,
-      Math.abs(dz) > Math.abs(dx) ? len : w,
+      isX ? w : totalLen,
     );
     const seg = new THREE.Mesh(geom, this.trailMaterial);
     seg.castShadow = true;
     seg.receiveShadow = true;
     seg.position.set(
-      (start.x + pos.x) / 2,
+      isX ? (start.x + pos.x) / 2 - (dir * ext) / 2 : start.x,
       TRAIL_HEIGHT / 2 + 0.01,
-      (start.z + pos.z) / 2,
+      isX ? start.z : (start.z + pos.z) / 2 - (dir * ext) / 2,
     );
     this.trailGroup.add(seg);
     this._segmentLastWorld = pos.clone();
@@ -677,10 +666,8 @@ export class DancingLineGame {
     this.player.rotation.set(0, 0, 0);
     this.player.material.opacity = 1;
     this.player.material.transparent = false;
-    this._camPos.set(this.position.x + CAM_OFFSET.x, CAM_OFFSET.y, this.position.z + CAM_OFFSET.z);
-    this._camLook.set(this.position.x, 0, this.position.z);
-    this.camera.position.copy(this._camPos);
-    this.camera.lookAt(this._camLook);
+    this.camera.position.set(this.position.x + CAM_OFFSET.x, CAM_OFFSET.y, this.position.z + CAM_OFFSET.z);
+    this.camera.lookAt(this.position.x, 0, this.position.z);
     this.music.stop();
     this.onEvent({ type: "reset" });
   }
