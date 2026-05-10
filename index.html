@@ -11,6 +11,13 @@
       href="https://fonts.googleapis.com/css2?family=Poiret+One&display=swap"
       rel="stylesheet"
     />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.168.0/build/three.module.js"
+        }
+      }
+    </script>
     <style>
       :root {
         color-scheme: dark;
@@ -52,11 +59,16 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      canvas#scene {
+      canvas#scene,
+      canvas#game {
         position: fixed;
         inset: 0;
         z-index: 0;
         display: block;
+      }
+
+      canvas#game {
+        z-index: 0;
       }
 
       .vignette {
@@ -484,6 +496,70 @@
         align-items: center;
       }
 
+      .modal__sub {
+        margin-bottom: 0.6rem;
+        color: var(--ink-soft);
+        font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+        letter-spacing: 0.4em;
+        text-indent: 0.4em;
+        text-transform: uppercase;
+      }
+
+      .gem-tally {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin-bottom: 0.5rem;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        letter-spacing: 0.18em;
+        color: var(--ink);
+      }
+
+      .gem-tally .gem {
+        width: 16px;
+        height: 16px;
+      }
+
+      .toast {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        z-index: 4;
+        padding: 0.85rem 1.6rem;
+        transform: translate(-50%, -50%);
+        color: var(--ink);
+        font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+        letter-spacing: 0.4em;
+        text-indent: 0.4em;
+        text-transform: uppercase;
+        background: rgba(0, 0, 0, 0.55);
+        border: 1px solid var(--ink-faint);
+        border-radius: 999px;
+        backdrop-filter: blur(8px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 220ms ease, transform 220ms ease;
+      }
+
+      .toast.is-active {
+        opacity: 1;
+        transform: translate(-50%, -50%) translateY(-1.5rem);
+      }
+
+      .vignette--die {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        background: radial-gradient(120% 90% at 50% 50%, transparent 40%, rgba(180, 30, 60, 0.55) 100%);
+        opacity: 0;
+        transition: opacity 320ms ease;
+      }
+
+      .vignette--die.is-active {
+        opacity: 1;
+      }
+
       /* ───────── TAP RIPPLE ───────── */
 
       .ripple {
@@ -530,7 +606,10 @@
   </head>
   <body>
     <canvas id="scene" aria-hidden="true"></canvas>
+    <canvas id="game" aria-hidden="true" style="display: none"></canvas>
     <div class="vignette" aria-hidden="true"></div>
+    <div class="vignette--die" data-die-vignette aria-hidden="true"></div>
+    <div class="toast" data-toast aria-hidden="true"></div>
 
     <svg width="0" height="0" style="position: absolute; pointer-events: none" aria-hidden="true">
       <defs>
@@ -737,12 +816,51 @@
             </div>
           </div>
         </div>
+
+        <div class="modal" data-die-modal aria-hidden="true">
+          <div class="modal__inner">
+            <h3 class="modal__title">You died</h3>
+            <p class="gem-tally">
+              <svg class="gem" aria-hidden="true"><use href="#i-diamond" /></svg>
+              <span data-die-gems>0</span>
+            </p>
+            <div class="modal__row">
+              <button class="ico-lg" data-die-restart aria-label="Try again">
+                <svg class="icon"><use href="#i-restart" /></svg>
+              </button>
+              <button class="ico-lg" data-die-quit aria-label="Back to levels">
+                <svg class="icon"><use href="#i-grid" /></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal" data-win-modal aria-hidden="true">
+          <div class="modal__inner">
+            <p class="modal__sub">Level complete</p>
+            <h3 class="modal__title">Victory</h3>
+            <p class="gem-tally">
+              <svg class="gem" aria-hidden="true"><use href="#i-diamond" /></svg>
+              <span data-win-gems>0</span>
+            </p>
+            <div class="modal__row">
+              <button class="ico-lg" data-win-restart aria-label="Replay">
+                <svg class="icon"><use href="#i-restart" /></svg>
+              </button>
+              <button class="ico-lg" data-win-quit aria-label="Back to levels">
+                <svg class="icon"><use href="#i-grid" /></svg>
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
 
-    <script>
+    <script type="module">
+      import { DancingLineGame } from "./runtime.js";
+
       // ─────────────────────────────────────────────────────────────
-      // Levels
+      // Levels (menu metadata) and runtime data fetch
       // ─────────────────────────────────────────────────────────────
 
       const LEVELS = [
@@ -828,11 +946,20 @@
         }
       };
 
+      let LEVEL_DATA = { levels: {} };
+      try {
+        const res = await fetch("./data.json", { cache: "no-store" });
+        LEVEL_DATA = await res.json();
+      } catch (err) {
+        console.warn("Could not load data.json", err);
+      }
+
       // ─────────────────────────────────────────────────────────────
-      // Canvas scene
+      // Menu canvas (2D ambient)
       // ─────────────────────────────────────────────────────────────
 
       const canvas = document.getElementById("scene");
+      const gameCanvas = document.getElementById("game");
       const ctx = canvas.getContext("2d");
 
       let W = window.innerWidth;
@@ -1225,7 +1352,7 @@
         showScreen("boot");
       });
 
-      // Keyboard navigation on select screen
+      // Keyboard navigation
       window.addEventListener("keydown", (e) => {
         if (activeScreen === "select") {
           if (e.key === "ArrowLeft") goTo(currentIdx - 1, -1);
@@ -1234,74 +1361,146 @@
           else if (e.key === "Escape") showScreen("boot");
         } else if (activeScreen === "game") {
           if (e.key === "Escape") togglePause();
-          else if (e.key === " ") {
-            e.preventDefault();
-            triggerTap(W / 2, H / 2);
-          }
         }
       });
 
-      // Play
+      // ─────────────────────────────────────────────────────────────
+      // 3D engine wiring
+      // ─────────────────────────────────────────────────────────────
+
+      const dieModal = document.querySelector("[data-die-modal]");
+      const winModal = document.querySelector("[data-win-modal]");
+      const dieGemsEl = document.querySelector("[data-die-gems]");
+      const winGemsEl = document.querySelector("[data-win-gems]");
+      const dieVignette = document.querySelector("[data-die-vignette]");
+      const toastEl = document.querySelector("[data-toast]");
+
+      let game = null;
+
+      function destroyGame() {
+        if (game) {
+          game.destroy();
+          game = null;
+        }
+        gameCanvas.style.display = "none";
+        canvas.style.display = "block";
+      }
+
+      function showModal(el, on) {
+        if (!el) return;
+        el.classList.toggle("is-active", !!on);
+      }
+
+      function showToast(text, ms = 1400) {
+        if (!toastEl) return;
+        toastEl.textContent = text;
+        toastEl.classList.add("is-active");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(() => toastEl.classList.remove("is-active"), ms);
+      }
+
+      function buildLevelData(idx) {
+        const meta = LEVELS[idx];
+        const data = LEVEL_DATA.levels?.[meta.id];
+        if (!data || !data.ready) return null;
+        return data;
+      }
+
       function startLevel() {
         const lvl = LEVELS[currentIdx];
+        const data = buildLevelData(currentIdx);
+        if (!data) {
+          showToast("Coming soon");
+          return;
+        }
         gameTitleEl.textContent = lvl.name;
         gemsEl.textContent = "0";
         progressEl.style.width = "0%";
-        scene.running = true;
-        scene.progress = 0;
-        pauseModal.classList.remove("is-active");
+        showModal(pauseModal, false);
+        showModal(dieModal, false);
+        showModal(winModal, false);
+        dieVignette.classList.remove("is-active");
+
+        canvas.style.display = "none";
+        gameCanvas.style.display = "block";
+
+        destroyGame();
+        game = new DancingLineGame({
+          canvas: gameCanvas,
+          level: data,
+          audioPlay: sound,
+          onEvent: handleGameEvent,
+        });
         showScreen("game");
+        setTimeout(() => game?.start(), 350);
+      }
+
+      function handleGameEvent(ev) {
+        switch (ev.type) {
+          case "gem":
+            gemsEl.textContent = String(ev.count);
+            break;
+          case "progress":
+            progressEl.style.width = (ev.value * 100).toFixed(2) + "%";
+            break;
+          case "death":
+            dieGemsEl.textContent = String(ev.gems);
+            dieVignette.classList.add("is-active");
+            setTimeout(() => showModal(dieModal, true), 700);
+            break;
+          case "victory":
+            winGemsEl.textContent = String(ev.gems);
+            setTimeout(() => showModal(winModal, true), 600);
+            break;
+        }
+      }
+
+      function restartCurrent() {
+        const data = buildLevelData(currentIdx);
+        if (!data || !game) return;
+        showModal(pauseModal, false);
+        showModal(dieModal, false);
+        showModal(winModal, false);
+        dieVignette.classList.remove("is-active");
+        game.reset();
+        gemsEl.textContent = "0";
+        progressEl.style.width = "0%";
+        setTimeout(() => game?.start(), 250);
+      }
+
+      function quitToSelect() {
+        showModal(pauseModal, false);
+        showModal(dieModal, false);
+        showModal(winModal, false);
+        dieVignette.classList.remove("is-active");
+        destroyGame();
+        showScreen("select");
       }
 
       document.querySelector("[data-play]").addEventListener("click", startLevel);
 
-      // Pause modal
       const pauseBtn = document.querySelector("[data-pause]");
-      pauseBtn.addEventListener("click", togglePause);
+      pauseBtn.addEventListener("click", () => togglePause());
       document.querySelector("[data-resume]").addEventListener("click", () => togglePause(false));
-      document.querySelector("[data-restart]").addEventListener("click", () => {
-        loadLevel(LEVELS[currentIdx]);
-        scene.running = true;
-        gemsEl.textContent = "0";
-        progressEl.style.width = "0%";
-        pauseModal.classList.remove("is-active");
-      });
-      document.querySelector("[data-quit]").addEventListener("click", () => {
-        pauseModal.classList.remove("is-active");
-        scene.running = true;
-        showScreen("select");
-      });
+      document.querySelector("[data-restart]").addEventListener("click", restartCurrent);
+      document.querySelector("[data-quit]").addEventListener("click", quitToSelect);
+      document.querySelector("[data-die-restart]").addEventListener("click", restartCurrent);
+      document.querySelector("[data-die-quit]").addEventListener("click", quitToSelect);
+      document.querySelector("[data-win-restart]").addEventListener("click", restartCurrent);
+      document.querySelector("[data-win-quit]").addEventListener("click", quitToSelect);
 
       function togglePause(force) {
-        const next = typeof force === "boolean" ? force : !pauseModal.classList.contains("is-active");
-        pauseModal.classList.toggle("is-active", next);
-        scene.running = !next;
+        if (!game) return;
+        const isOpen = pauseModal.classList.contains("is-active");
+        const next = typeof force === "boolean" ? force : !isOpen;
+        showModal(pauseModal, next);
+        if (next) game.pause();
+        else game.resume();
       }
 
-      // Tap on game screen → tiny ripple, head pulse, gem tick
-      const tapZone = document.querySelector("[data-tap]");
-      let gemCount = 0;
-
-      function triggerTap(x, y) {
-        if (!scene.running) return;
-        const r = document.createElement("span");
-        r.className = "ripple";
-        r.style.left = x + "px";
-        r.style.top = y + "px";
-        screens.game.appendChild(r);
-        setTimeout(() => r.remove(), 540);
-        scene.flash = 0.6;
-        gemCount += 1;
-        gemsEl.textContent = String(gemCount);
-      }
-
-      tapZone.addEventListener("pointerdown", (e) => {
-        triggerTap(e.clientX, e.clientY);
-      });
-
-      // Progress bar tied to scene loop
+      // Progress bar idle update for menu canvas (kept for compat)
       function tickHud() {
-        if (activeScreen === "game" && scene.total > 0) {
+        if (activeScreen === "game" && !game && scene.total > 0) {
           const pct = (scene.progress / scene.total) * 100;
           progressEl.style.width = pct.toFixed(2) + "%";
         }
@@ -1320,11 +1519,11 @@
       requestAnimationFrame(frame);
       screens.boot.focus();
 
-      // Expose hooks for later mechanics
       window.DancingLine = {
         levels: LEVELS,
+        levelData: LEVEL_DATA,
         sound,
-        scene,
+        getGame: () => game,
       };
     </script>
   </body>

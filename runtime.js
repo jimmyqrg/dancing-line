@@ -1,0 +1,540 @@
+import * as THREE from "three";
+
+const TURN_TOLERANCE = 0.45;
+const FALL_GRAVITY = 22;
+const TRAIL_HEIGHT = 0.32;
+const PLAYER_SIZE = 0.7;
+const GEM_RADIUS = 0.55;
+const FINISH_RADIUS = 0.9;
+const DEATH_FLASH_DURATION = 0.7;
+
+export class DancingLineGame {
+  constructor({ canvas, level, onEvent, audioPlay }) {
+    this.canvas = canvas;
+    this.level = level;
+    this.onEvent = onEvent || (() => {});
+    this.audioPlay = audioPlay || (() => {});
+
+    this.state = "ready";
+    this.gemsCollected = 0;
+
+    this._initRenderer();
+    this._initScene();
+    this._buildPath();
+    this._buildWorld();
+    this._initCamera();
+    this._initInput();
+
+    this._lastTs = 0;
+    this._frame = this._frame.bind(this);
+    requestAnimationFrame(this._frame);
+  }
+
+  _initRenderer() {
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas,
+      antialias: true,
+      alpha: true,
+    });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
+
+    this._onResize = () => {
+      this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+      if (this.camera) {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+      }
+    };
+    window.addEventListener("resize", this._onResize);
+  }
+
+  _initScene() {
+    const t = this.level.theme;
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(t.sky);
+    this.scene.fog = new THREE.Fog(t.sky, t.fogNear, t.fogFar);
+
+    const hemi = new THREE.HemisphereLight(t.sky, t.ground, 0.55);
+    this.scene.add(hemi);
+
+    const ambient = new THREE.AmbientLight(new THREE.Color(t.ambient), 0.45);
+    this.scene.add(ambient);
+
+    const dir = new THREE.DirectionalLight(new THREE.Color(t.key), 1.05);
+    dir.position.set(20, 30, 12);
+    dir.castShadow = true;
+    dir.shadow.mapSize.set(2048, 2048);
+    dir.shadow.camera.near = 1;
+    dir.shadow.camera.far = 120;
+    dir.shadow.camera.left = -40;
+    dir.shadow.camera.right = 40;
+    dir.shadow.camera.top = 40;
+    dir.shadow.camera.bottom = -40;
+    dir.shadow.bias = -0.0005;
+    this.scene.add(dir);
+    this.dirLight = dir;
+
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(t.ground),
+      roughness: 0.95,
+      metalness: 0,
+    });
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.5;
+    ground.receiveShadow = true;
+    this.scene.add(ground);
+  }
+
+  _buildPath() {
+    const lvl = this.level;
+    const tile = lvl.tile;
+    const start = { x: lvl.start.x, z: lvl.start.z };
+
+    const corners = [{ x: start.x, z: start.z }];
+    let cur = { ...start };
+    for (const seg of lvl.segments) {
+      if (seg.axis === "x") cur.x += seg.length;
+      else cur.z += seg.length;
+      corners.push({ ...cur });
+    }
+
+    this.corners = corners;
+
+    let total = 0;
+    const cumulative = [0];
+    for (let i = 1; i < corners.length; i++) {
+      const a = corners[i - 1];
+      const b = corners[i];
+      const len = Math.abs(b.x - a.x) + Math.abs(b.z - a.z);
+      total += len * tile;
+      cumulative.push(total);
+    }
+    this.totalDistance = total;
+    this.cumulative = cumulative;
+
+    this.finishCorner = corners[corners.length - 1];
+    this.finishPoint = new THREE.Vector3(
+      this.finishCorner.x * tile,
+      0,
+      this.finishCorner.z * tile,
+    );
+
+    const pathTiles = new Map();
+    for (let i = 1; i < corners.length; i++) {
+      const a = corners[i - 1];
+      const b = corners[i];
+      const sx = Math.sign(b.x - a.x);
+      const sz = Math.sign(b.z - a.z);
+      const len = Math.abs(b.x - a.x) + Math.abs(b.z - a.z);
+      for (let k = 0; k <= len; k++) {
+        const tx = a.x + sx * k;
+        const tz = a.z + sz * k;
+        pathTiles.set(`${tx},${tz}`, { x: tx, z: tz });
+      }
+    }
+    this.pathTiles = pathTiles;
+  }
+
+  _buildWorld() {
+    const t = this.level.theme;
+    const tile = this.level.tile;
+
+    const tileGeom = new THREE.BoxGeometry(tile, 0.5, tile);
+    const tileTopMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(t.tileTop),
+      roughness: 0.85,
+      metalness: 0.0,
+    });
+    const tileMesh = new THREE.InstancedMesh(tileGeom, tileTopMat, this.pathTiles.size);
+    tileMesh.castShadow = true;
+    tileMesh.receiveShadow = true;
+    const m = new THREE.Matrix4();
+    let i = 0;
+    for (const cell of this.pathTiles.values()) {
+      m.makeTranslation(cell.x * tile, -0.25, cell.z * tile);
+      tileMesh.setMatrixAt(i++, m);
+    }
+    tileMesh.instanceMatrix.needsUpdate = true;
+    this.scene.add(tileMesh);
+    this.tileMesh = tileMesh;
+
+    const finishGeom = new THREE.CylinderGeometry(0.7, 0.7, 0.05, 24);
+    const finishMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: new THREE.Color(t.line),
+      emissiveIntensity: 0.7,
+      roughness: 0.4,
+    });
+    const finish = new THREE.Mesh(finishGeom, finishMat);
+    finish.position.set(this.finishPoint.x, 0.03, this.finishPoint.z);
+    this.scene.add(finish);
+    this.finishMesh = finish;
+
+    const ringGeom = new THREE.RingGeometry(0.85, 1.05, 32);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(t.line),
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide,
+    });
+    const ring = new THREE.Mesh(ringGeom, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(this.finishPoint.x, 0.06, this.finishPoint.z);
+    this.scene.add(ring);
+    this.finishRing = ring;
+
+    const gemGeom = new THREE.OctahedronGeometry(0.32, 0);
+    const gemMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: new THREE.Color(t.line),
+      emissiveIntensity: 0.85,
+      roughness: 0.25,
+      metalness: 0.5,
+    });
+    this.gems = (this.level.gems || []).map((g) => {
+      const mesh = new THREE.Mesh(gemGeom, gemMat.clone());
+      mesh.position.set(g.x * tile, 0.45, g.z * tile);
+      mesh.castShadow = true;
+      mesh.userData.collected = false;
+      mesh.userData.basePos = mesh.position.clone();
+      this.scene.add(mesh);
+      return mesh;
+    });
+
+    if (Array.isArray(this.level.decor)) {
+      const decorMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(t.decor || t.tileSide),
+        roughness: 0.9,
+      });
+      for (const d of this.level.decor) {
+        const s = d.size || 1;
+        const geo = new THREE.BoxGeometry(s, s * 1.4, s);
+        const mesh = new THREE.Mesh(geo, decorMat);
+        mesh.position.set(d.x * tile, s * 0.7 - 0.5, d.z * tile);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        this.scene.add(mesh);
+      }
+    }
+
+    const playerGeom = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
+    const playerMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: new THREE.Color(t.line),
+      emissiveIntensity: 0.45,
+      roughness: 0.4,
+    });
+    const player = new THREE.Mesh(playerGeom, playerMat);
+    player.castShadow = true;
+    player.position.set(this.level.start.x * tile, PLAYER_SIZE / 2, this.level.start.z * tile);
+    this.scene.add(player);
+    this.player = player;
+
+    const glowMat = new THREE.SpriteMaterial({
+      color: new THREE.Color(t.glow || t.line),
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+    });
+    const glow = new THREE.Sprite(glowMat);
+    glow.scale.set(2.4, 2.4, 1);
+    this.player.add(glow);
+    this.headGlow = glow;
+
+    this.trailGroup = new THREE.Group();
+    this.scene.add(this.trailGroup);
+    this.trailMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(t.line),
+      emissive: new THREE.Color(t.line),
+      emissiveIntensity: 0.55,
+      roughness: 0.45,
+      metalness: 0.1,
+    });
+
+    this.position = new THREE.Vector3(
+      this.level.start.x * tile,
+      PLAYER_SIZE / 2,
+      this.level.start.z * tile,
+    );
+    this.lastCornerPos = this.position.clone();
+    this.direction = this.level.start.dir === "x" ? new THREE.Vector3(1, 0, 0)
+                                                  : new THREE.Vector3(0, 0, 1);
+    this.cornerIndex = 0;
+    this.distanceTravelled = 0;
+
+    this._segmentLastWorld = this.position.clone();
+  }
+
+  _initCamera() {
+    const aspect = window.innerWidth / window.innerHeight;
+    this.camera = new THREE.PerspectiveCamera(38, aspect, 0.1, 200);
+    this.cameraOffset = new THREE.Vector3(8, 9, 8);
+    this.camera.position.copy(this.position).add(this.cameraOffset);
+    this.camera.lookAt(this.position);
+  }
+
+  _initInput() {
+    this._onPointerDown = (e) => {
+      if (e.target && e.target.closest("button")) return;
+      this.handleTap();
+    };
+    this._onKeyDown = (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        this.handleTap();
+      }
+    };
+    this.canvas.addEventListener("pointerdown", this._onPointerDown);
+    window.addEventListener("keydown", this._onKeyDown);
+  }
+
+  start() {
+    this.state = "playing";
+    this.startedAt = performance.now();
+    this.onEvent({ type: "start" });
+  }
+
+  pause() {
+    if (this.state === "playing") {
+      this.state = "paused";
+      this.onEvent({ type: "pause" });
+    }
+  }
+
+  resume() {
+    if (this.state === "paused") {
+      this.state = "playing";
+      this.onEvent({ type: "resume" });
+    }
+  }
+
+  togglePause() {
+    if (this.state === "playing") this.pause();
+    else if (this.state === "paused") this.resume();
+  }
+
+  handleTap() {
+    if (this.state !== "playing") return;
+    if (this.direction.x !== 0) {
+      this.direction.set(0, 0, 1);
+    } else {
+      this.direction.set(1, 0, 0);
+    }
+
+    this._dropTrailUpTo(this.position.clone());
+    this.lastCornerPos = this.position.clone();
+    this._evaluateTurnCorrectness();
+
+    this.onEvent({ type: "turn", position: this.position.clone() });
+  }
+
+  _evaluateTurnCorrectness() {
+    if (this.cornerIndex >= this.corners.length - 1) return;
+    const target = this.corners[this.cornerIndex + 1];
+    const expected = new THREE.Vector3(
+      target.x * this.level.tile,
+      this.position.y,
+      target.z * this.level.tile,
+    );
+    const dx = Math.abs(this.lastCornerPos.x - expected.x);
+    const dz = Math.abs(this.lastCornerPos.z - expected.z);
+    if (dx <= TURN_TOLERANCE && dz <= TURN_TOLERANCE) {
+      this.cornerIndex += 1;
+    }
+  }
+
+  _dropTrailUpTo(pos) {
+    const start = this._segmentLastWorld;
+    const dx = pos.x - start.x;
+    const dz = pos.z - start.z;
+    const len = Math.hypot(dx, dz);
+    if (len < 0.05) return;
+    const w = this.level.trailWidth || 0.32;
+    const geom = new THREE.BoxGeometry(
+      Math.abs(dx) > Math.abs(dz) ? len : w,
+      TRAIL_HEIGHT,
+      Math.abs(dz) > Math.abs(dx) ? len : w,
+    );
+    const seg = new THREE.Mesh(geom, this.trailMaterial);
+    seg.castShadow = true;
+    seg.receiveShadow = true;
+    seg.position.set(
+      (start.x + pos.x) / 2,
+      TRAIL_HEIGHT / 2,
+      (start.z + pos.z) / 2,
+    );
+    this.trailGroup.add(seg);
+    this._segmentLastWorld = pos.clone();
+  }
+
+  _isOnPath(pos) {
+    const tile = this.level.tile;
+    const tx = Math.round(pos.x / tile);
+    const tz = Math.round(pos.z / tile);
+    return this.pathTiles.has(`${tx},${tz}`);
+  }
+
+  _checkGems() {
+    for (const gem of this.gems) {
+      if (gem.userData.collected) continue;
+      const dx = gem.position.x - this.position.x;
+      const dz = gem.position.z - this.position.z;
+      if (Math.hypot(dx, dz) < GEM_RADIUS) {
+        gem.userData.collected = true;
+        gem.visible = false;
+        this.gemsCollected += 1;
+        this.onEvent({ type: "gem", count: this.gemsCollected });
+      }
+    }
+  }
+
+  _checkFinish() {
+    const dx = this.finishPoint.x - this.position.x;
+    const dz = this.finishPoint.z - this.position.z;
+    if (Math.hypot(dx, dz) < FINISH_RADIUS) this._win();
+  }
+
+  _die() {
+    if (this.state === "dead" || this.state === "won") return;
+    this.state = "dead";
+    this.deathTimer = 0;
+    this.fallVelocity = 0;
+    this.audioPlay("death");
+    this.onEvent({ type: "death", gems: this.gemsCollected });
+  }
+
+  _win() {
+    if (this.state === "won" || this.state === "dead") return;
+    this.state = "won";
+    this.audioPlay("victory");
+    this.onEvent({ type: "victory", gems: this.gemsCollected });
+  }
+
+  reset() {
+    while (this.trailGroup.children.length) {
+      const c = this.trailGroup.children[0];
+      this.trailGroup.remove(c);
+      c.geometry?.dispose();
+    }
+    for (const gem of this.gems) {
+      gem.userData.collected = false;
+      gem.visible = true;
+      gem.position.copy(gem.userData.basePos);
+    }
+    this.gemsCollected = 0;
+    this.state = "ready";
+    this.deathTimer = 0;
+    this.fallVelocity = 0;
+    this.cornerIndex = 0;
+    this.distanceTravelled = 0;
+    this.position.set(
+      this.level.start.x * this.level.tile,
+      PLAYER_SIZE / 2,
+      this.level.start.z * this.level.tile,
+    );
+    this.lastCornerPos = this.position.clone();
+    this._segmentLastWorld = this.position.clone();
+    this.direction = this.level.start.dir === "x" ? new THREE.Vector3(1, 0, 0)
+                                                  : new THREE.Vector3(0, 0, 1);
+    this.player.position.copy(this.position);
+    this.player.rotation.set(0, 0, 0);
+    this.player.material.opacity = 1;
+    this.player.material.transparent = false;
+    this.camera.position.copy(this.position).add(this.cameraOffset);
+    this.camera.lookAt(this.position);
+    this.onEvent({ type: "reset" });
+  }
+
+  destroy() {
+    window.removeEventListener("resize", this._onResize);
+    window.removeEventListener("keydown", this._onKeyDown);
+    this.canvas.removeEventListener("pointerdown", this._onPointerDown);
+    this.renderer.dispose();
+    this.scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+        else obj.material.dispose();
+      }
+    });
+  }
+
+  _frame(ts) {
+    const dt = this._lastTs ? Math.min((ts - this._lastTs) / 1000, 0.05) : 0;
+    this._lastTs = ts;
+    this._update(dt);
+    this.renderer.render(this.scene, this.camera);
+    requestAnimationFrame(this._frame);
+  }
+
+  _update(dt) {
+    const t = ts(this);
+
+    if (this.state === "playing" && dt > 0) {
+      const speed = this.level.tempo;
+      this.position.x += this.direction.x * speed * dt;
+      this.position.z += this.direction.z * speed * dt;
+      this.distanceTravelled += speed * dt;
+
+      this._dropTrailUpTo(this.position.clone());
+
+      this.player.position.copy(this.position);
+
+      this._checkGems();
+      this._checkFinish();
+
+      if (!this._isOnPath(this.position)) this._die();
+
+      const pct = Math.min(1, this.distanceTravelled / this.totalDistance);
+      this.onEvent({ type: "progress", value: pct });
+    } else if (this.state === "dead") {
+      this.deathTimer = (this.deathTimer || 0) + dt;
+      this.fallVelocity = (this.fallVelocity || 0) + FALL_GRAVITY * dt;
+      this.position.y -= this.fallVelocity * dt;
+      this.player.position.copy(this.position);
+      this.player.rotation.x += dt * 4;
+      this.player.rotation.z += dt * 5;
+      if (this.deathTimer > DEATH_FLASH_DURATION && !this._deathSignaled) {
+        this._deathSignaled = true;
+      }
+    } else if (this.state === "won") {
+      this.player.rotation.y += dt * 1.2;
+    }
+
+    if (this.finishRing) {
+      this.finishRing.rotation.z += dt * 0.6;
+      const s = 1 + Math.sin(t * 2.4) * 0.06;
+      this.finishRing.scale.set(s, s, 1);
+    }
+    for (const gem of this.gems) {
+      if (!gem.visible) continue;
+      gem.rotation.y += dt * 1.6;
+      gem.position.y = gem.userData.basePos.y + Math.sin(t * 2 + gem.position.x) * 0.08;
+    }
+    if (this.headGlow) {
+      const pulse = 2.2 + Math.sin(t * 6) * 0.18;
+      this.headGlow.scale.set(pulse, pulse, 1);
+    }
+
+    this._updateCamera(dt);
+  }
+
+  _updateCamera(dt) {
+    const desired = new THREE.Vector3().copy(this.position).add(this.cameraOffset);
+    const lerp = Math.min(1, dt * 4.2);
+    this.camera.position.lerp(desired, lerp);
+    const look = new THREE.Vector3(this.position.x, this.position.y, this.position.z);
+    this.camera.lookAt(look);
+  }
+}
+
+function ts(self) {
+  return (performance.now() - (self.startedAt || performance.now())) / 1000;
+}

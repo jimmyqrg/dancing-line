@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "levels": {
+    "beginning": {
+      "id": "beginning",
+      "name": "The Beginning",
+      "ready": true,
+      "tempo": 6.5,
+      "tile": 1.0,
+      "trailWidth": 0.32,
+      "theme": {
+        "fogNear": 16,
+        "fogFar": 90,
+        "sky": "#0a1f23",
+        "ground": "#16524a",
+        "tileTop": "#52c5a0",
+        "tileSide": "#0e3b35",
+        "line": "#f4fff8",
+        "glow": "#a4ffd8",
+        "ambient": "#264a48",
+        "key": "#f7ffe8",
+        "decor": "#7fdcb5"
+      },
+      "start": { "x": 0, "z": 0, "dir": "x" },
+      "segments": [
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 5 },
+        { "axis": "x", "length": 6 },
+        { "axis": "z", "length": 4 },
+        { "axis": "x", "length": 5 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 8 },
+        { "axis": "z", "length": 4 },
+        { "axis": "x", "length": 4 },
+        { "axis": "z", "length": 7 },
+        { "axis": "x", "length": 6 },
+        { "axis": "z", "length": 3 }
+      ],
+      "gems": [
+        { "x": 3, "z": 0 },
+        { "x": 7, "z": 3 },
+        { "x": 10, "z": 5 },
+        { "x": 12, "z": 8 },
+        { "x": 15, "z": 9 },
+        { "x": 17, "z": 13 },
+        { "x": 22, "z": 15 },
+        { "x": 25, "z": 18 },
+        { "x": 28, "z": 22 },
+        { "x": 32, "z": 25 }
+      ],
+      "decor": [
+        { "x": -2, "z": -2, "type": "block", "size": 1.0 },
+        { "x": 4, "z": -3, "type": "block", "size": 0.7 },
+        { "x": -3, "z": 6, "type": "block", "size": 1.2 },
+        { "x": 11, "z": 2, "type": "block", "size": 0.8 },
+        { "x": 9, "z": 11, "type": "block", "size": 1.0 },
+        { "x": 20, "z": 7, "type": "block", "size": 0.9 },
+        { "x": 26, "z": 14, "type": "block", "size": 1.1 },
+        { "x": 14, "z": 18, "type": "block", "size": 0.8 },
+        { "x": 30, "z": 19, "type": "block", "size": 1.0 },
+        { "x": 36, "z": 23, "type": "block", "size": 1.2 },
+        { "x": 25, "z": 28, "type": "block", "size": 0.9 }
+      ]
+    },
+    "piano": { "id": "piano", "name": "The Piano", "ready": false },
+    "winter": { "id": "winter", "name": "The Winter", "ready": false },
+    "desert": { "id": "desert", "name": "The Desert", "ready": false },
+    "storm": { "id": "storm", "name": "The Storm", "ready": false },
+    "chaos": { "id": "chaos", "name": "The Chaos", "ready": false }
+  }
+}
