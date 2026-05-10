@@ -165,6 +165,10 @@
     <input type="number" id="start-width" value="1" min="1" max="9">
   </div>
   <div class="setup-row">
+    <label>Speed</label>
+    <input type="number" id="player-speed" value="5" min="1" max="20" step="0.5">
+  </div>
+  <div class="setup-row">
     <label>Music</label>
     <select id="music-select">
       <option value="">None</option>
@@ -202,6 +206,7 @@
 
 <script type="module">
 import * as THREE from "three";
+import { mergeGeometries } from "https://unpkg.com/three@0.168.0/examples/jsm/utils/BufferGeometryUtils.js";
 
 const setupEl = document.getElementById("setup");
 const editorEl = document.getElementById("editor");
@@ -213,6 +218,7 @@ const colPath = document.getElementById("col-path");
 const colLine = document.getElementById("col-line");
 const startLengthEl = document.getElementById("start-length");
 const startWidthEl = document.getElementById("start-width");
+const playerSpeedEl = document.getElementById("player-speed");
 const musicSelect = document.getElementById("music-select");
 const musicFileEl = document.getElementById("music-file");
 const startBtn = document.getElementById("start-btn");
@@ -232,6 +238,7 @@ function saveSettings() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       bg: colBg.value, path: colPath.value, line: colLine.value,
       startLength: startLengthEl.value, startWidth: startWidthEl.value,
+      speed: playerSpeedEl.value,
       music: musicSelect.value === "__upload__" ? "" : musicSelect.value
     }));
   } catch (_) {}
@@ -245,6 +252,7 @@ function loadSettings() {
     if (d.line) colLine.value = d.line;
     if (d.startLength) startLengthEl.value = d.startLength;
     if (d.startWidth) startWidthEl.value = d.startWidth;
+    if (d.speed) playerSpeedEl.value = d.speed;
     if (d.music) musicSelect.value = d.music;
   } catch (_) {}
 }
@@ -266,7 +274,7 @@ let currentWidth = 1;
 let direction = "x";
 let pos = { x: 0, z: 0 };
 let currentSegLength = 0;
-const speed = 5;
+let speed = 5;
 let musicUrl = "";
 let musicAudio = null;
 
@@ -370,11 +378,10 @@ function destroyScene() {
   }
 }
 
-let pathMaterial, trailMaterial, bgColor, pathColor, lineColor;
+let pathMaterial, livePathMaterial, trailMaterial, bgColor, pathColor, lineColor;
 
-function buildPathMesh(axis, length, width, startX, startZ, isFirst) {
+function buildPathGeom(axis, length, width, startX, startZ, isFirst) {
   const w = widthScale(width);
-  // Extend path by half-width behind the start to fill corner gaps
   const ext = isFirst ? 0 : w / 2;
   const totalLen = length + ext;
   const geom = new THREE.BoxGeometry(
@@ -382,28 +389,32 @@ function buildPathMesh(axis, length, width, startX, startZ, isFirst) {
     0.12,
     axis === "z" ? totalLen : w
   );
-  const mesh = new THREE.Mesh(geom, pathMaterial);
-  mesh.receiveShadow = true;
-  // Shift center back by ext/2 so the extension goes behind startX/startZ
   const cx = startX + (axis === "x" ? (length / 2 - ext / 2) : 0);
   const cz = startZ + (axis === "z" ? (length / 2 - ext / 2) : 0);
-  mesh.position.set(cx, -0.06, cz);
-  return mesh;
+  geom.translate(cx, -0.06, cz);
+  return geom;
 }
 
+let pathMesh = null;
 function rebuildPath() {
-  while (pathGroup.children.length) {
-    const c = pathGroup.children[0];
-    pathGroup.remove(c);
-    c.geometry.dispose();
+  if (pathMesh) {
+    pathGroup.remove(pathMesh);
+    pathMesh.geometry.dispose();
+    pathMesh = null;
   }
+  if (segments.length === 0) return;
+  const geoms = [];
   let dx = 0, dz = 0;
   segments.forEach((seg, i) => {
-    const mesh = buildPathMesh(seg.axis, seg.length, seg.width, dx, dz, i === 0);
-    pathGroup.add(mesh);
+    geoms.push(buildPathGeom(seg.axis, seg.length, seg.width, dx, dz, i === 0));
     dx += seg.axis === "x" ? seg.length : 0;
     dz += seg.axis === "z" ? seg.length : 0;
   });
+  const merged = mergeGeometries(geoms, false);
+  geoms.forEach(g => g.dispose());
+  pathMesh = new THREE.Mesh(merged, pathMaterial);
+  pathMesh.receiveShadow = true;
+  pathGroup.add(pathMesh);
 }
 
 const TRAIL_W = 0.5;
@@ -451,6 +462,7 @@ function startEditor() {
   pathColor = colPath.value;
   lineColor = colLine.value;
   const startLength = Math.max(1, parseInt(startLengthEl.value) || 8);
+  speed = Math.max(0.5, Math.min(20, parseFloat(playerSpeedEl.value) || 5));
 
   if (musicSelect.value === "__upload__" && uploadedMusicBlob) {
     musicUrl = uploadedMusicBlob;
@@ -477,6 +489,17 @@ function startEditor() {
     roughness: 0.8,
     transparent: true,
     opacity: 0.55,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
+  });
+  livePathMaterial = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(pathColor),
+    roughness: 0.8,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
   });
   trailMaterial = new THREE.MeshStandardMaterial({
     color: new THREE.Color(lineColor),
@@ -494,7 +517,7 @@ function startEditor() {
   // Trail for starting segment
   trailLastX = 0;
   trailLastZ = 0;
-  addTrailSegment(0, 0, pos.x, pos.z);
+  addTrailSegment(0, 0, pos.x, pos.z, true);
   trailLastX = pos.x;
   trailLastZ = pos.z;
 
@@ -575,7 +598,7 @@ function buildJSON() {
   const result = {
     name: "Custom Level",
     tile: 1.0,
-    tempo: 6.0,
+    tempo: speed,
     trailWidth: 0.32,
     theme: {
       sky: bgColor, ground: bgColor,
@@ -656,11 +679,10 @@ function updateLiveTrail(headX, headZ) {
 }
 
 let livePathMesh = null;
-const PATH_AHEAD = 3.0; // path extends this far ahead of the player
+const PATH_AHEAD = 3.0;
 function updateLivePath(headX, headZ) {
-  if (livePathMesh) { scene.remove(livePathMesh); livePathMesh.geometry.dispose(); }
+  if (livePathMesh) { scene.remove(livePathMesh); livePathMesh.geometry.dispose(); livePathMesh = null; }
   const w = widthScale(currentWidth);
-  // Path extends from pos to (head + PATH_AHEAD), centered on the player
   const totalLen = currentSegLength + PATH_AHEAD;
   if (totalLen < 0.01) return;
   const geom = new THREE.BoxGeometry(
@@ -668,12 +690,12 @@ function updateLivePath(headX, headZ) {
     0.12,
     direction === "z" ? totalLen : w
   );
-  livePathMesh = new THREE.Mesh(geom, pathMaterial);
+  livePathMesh = new THREE.Mesh(geom, livePathMaterial);
   livePathMesh.receiveShadow = true;
-  // Center of the path slab is at midpoint between pos and (head + PATH_AHEAD)
   const cx = pos.x + (direction === "x" ? totalLen / 2 : 0);
   const cz = pos.z + (direction === "z" ? totalLen / 2 : 0);
   livePathMesh.position.set(cx, -0.06, cz);
+  livePathMesh.renderOrder = 1;
   scene.add(livePathMesh);
 }
 </script>

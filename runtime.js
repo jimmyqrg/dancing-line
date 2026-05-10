@@ -56,6 +56,8 @@ const FINISH_RADIUS = 0.9;
 const DEATH_FLASH_DURATION = 0.7;
 const OFF_PATH_GRACE = 0.15;
 
+function widthScale(w) { return Math.pow(5, (w - 1) / 8); }
+
 export class DancingLineGame {
   constructor({ canvas, level, onEvent, audioPlay, musicUrl }) {
     this.canvas = canvas;
@@ -152,6 +154,8 @@ export class DancingLineGame {
     const tile = lvl.tile;
     const start = { x: lvl.start.x, z: lvl.start.z };
 
+    this.hasSegmentWidths = lvl.segments.some(s => s.width != null);
+
     const corners = [{ x: start.x, z: start.z }];
     let cur = { ...start };
     for (const seg of lvl.segments) {
@@ -181,44 +185,102 @@ export class DancingLineGame {
       this.finishCorner.z * tile,
     );
 
-    const pathTiles = new Map();
-    for (let i = 1; i < corners.length; i++) {
-      const a = corners[i - 1];
-      const b = corners[i];
-      const sx = Math.sign(b.x - a.x);
-      const sz = Math.sign(b.z - a.z);
-      const len = Math.abs(b.x - a.x) + Math.abs(b.z - a.z);
-      for (let k = 0; k <= len; k++) {
-        const tx = a.x + sx * k;
-        const tz = a.z + sz * k;
-        pathTiles.set(`${tx},${tz}`, { x: tx, z: tz });
+    if (this.hasSegmentWidths) {
+      // Build axis-aligned bounding rects for each segment for on-path checks
+      this.pathRects = [];
+      let sx = start.x * tile, sz = start.z * tile;
+      for (const seg of lvl.segments) {
+        const w = widthScale(seg.width || 1) * tile;
+        const halfW = w / 2;
+        const len = seg.length * tile;
+        let minX, maxX, minZ, maxZ;
+        if (seg.axis === "x") {
+          minX = sx; maxX = sx + len;
+          minZ = sz - halfW; maxZ = sz + halfW;
+          sx += len;
+        } else {
+          minX = sx - halfW; maxX = sx + halfW;
+          minZ = sz; maxZ = sz + len;
+          sz += len;
+        }
+        this.pathRects.push({ minX, maxX, minZ, maxZ });
       }
+    } else {
+      const pathTiles = new Map();
+      for (let i = 1; i < corners.length; i++) {
+        const a = corners[i - 1];
+        const b = corners[i];
+        const signX = Math.sign(b.x - a.x);
+        const signZ = Math.sign(b.z - a.z);
+        const len = Math.abs(b.x - a.x) + Math.abs(b.z - a.z);
+        for (let k = 0; k <= len; k++) {
+          const tx = a.x + signX * k;
+          const tz = a.z + signZ * k;
+          pathTiles.set(`${tx},${tz}`, { x: tx, z: tz });
+        }
+      }
+      this.pathTiles = pathTiles;
     }
-    this.pathTiles = pathTiles;
   }
 
   _buildWorld() {
     const t = this.level.theme;
     const tile = this.level.tile;
 
-    const tileGeom = new THREE.BoxGeometry(tile, 0.5, tile);
     const tileTopMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(t.tileTop),
       roughness: 0.85,
       metalness: 0.0,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     });
-    const tileMesh = new THREE.InstancedMesh(tileGeom, tileTopMat, this.pathTiles.size);
-    tileMesh.castShadow = true;
-    tileMesh.receiveShadow = true;
-    const m = new THREE.Matrix4();
-    let i = 0;
-    for (const cell of this.pathTiles.values()) {
-      m.makeTranslation(cell.x * tile, -0.25, cell.z * tile);
-      tileMesh.setMatrixAt(i++, m);
+
+    if (this.hasSegmentWidths) {
+      // Render wide path slabs per segment (editor-style levels)
+      let sx = this.level.start.x * tile;
+      let sz = this.level.start.z * tile;
+      const pathGroup = new THREE.Group();
+      for (let si = 0; si < this.level.segments.length; si++) {
+        const seg = this.level.segments[si];
+        const w = widthScale(seg.width || 1) * tile;
+        const len = seg.length * tile;
+        // Extend behind the start to cover corner gaps (except first segment)
+        const ext = si === 0 ? 0 : w / 2;
+        const totalLen = len + ext;
+        const geom = new THREE.BoxGeometry(
+          seg.axis === "x" ? totalLen : w,
+          0.5,
+          seg.axis === "z" ? totalLen : w
+        );
+        const mesh = new THREE.Mesh(geom, tileTopMat);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        const cx = sx + (seg.axis === "x" ? (len / 2 - ext / 2) : 0);
+        const cz = sz + (seg.axis === "z" ? (len / 2 - ext / 2) : 0);
+        mesh.position.set(cx, -0.25, cz);
+        pathGroup.add(mesh);
+        sx += seg.axis === "x" ? len : 0;
+        sz += seg.axis === "z" ? len : 0;
+      }
+      this.scene.add(pathGroup);
+      this.tileMesh = pathGroup;
+    } else {
+      // Legacy tile-based rendering
+      const tileGeom = new THREE.BoxGeometry(tile, 0.5, tile);
+      const tileMesh = new THREE.InstancedMesh(tileGeom, tileTopMat, this.pathTiles.size);
+      tileMesh.castShadow = true;
+      tileMesh.receiveShadow = true;
+      const m = new THREE.Matrix4();
+      let i = 0;
+      for (const cell of this.pathTiles.values()) {
+        m.makeTranslation(cell.x * tile, -0.25, cell.z * tile);
+        tileMesh.setMatrixAt(i++, m);
+      }
+      tileMesh.instanceMatrix.needsUpdate = true;
+      this.scene.add(tileMesh);
+      this.tileMesh = tileMesh;
     }
-    tileMesh.instanceMatrix.needsUpdate = true;
-    this.scene.add(tileMesh);
-    this.tileMesh = tileMesh;
 
     const finishGeom = new THREE.CylinderGeometry(0.7, 0.7, 0.05, 24);
     const finishMat = new THREE.MeshStandardMaterial({
@@ -453,6 +515,13 @@ export class DancingLineGame {
   }
 
   _isOnPath(pos) {
+    if (this.hasSegmentWidths) {
+      for (const r of this.pathRects) {
+        if (pos.x >= r.minX && pos.x <= r.maxX &&
+            pos.z >= r.minZ && pos.z <= r.maxZ) return true;
+      }
+      return false;
+    }
     const tile = this.level.tile;
     const tx = Math.round(pos.x / tile);
     const tz = Math.round(pos.z / tile);
