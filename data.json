@@ -187,6 +187,57 @@
         { "x": 55, "z": 40, "type": "block", "size": 1.1 }
       ]
     },
+    "ocean": {
+      "id": "ocean",
+      "name": "The Ocean",
+      "ready": true,
+      "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/ocean.mp3",
+      "tempo": 5.2,
+      "tile": 1.0,
+      "trailWidth": 0.32,
+      "theme": {
+        "fogNear": 16, "fogFar": 90,
+        "sky": "#041220", "ground": "#0e3a5c",
+        "tileTop": "#3ca8d4", "tileSide": "#0a2540",
+        "line": "#e8fbff", "glow": "#72d6f7",
+        "ambient": "#153050", "key": "#daf4ff", "decor": "#2888b0"
+      },
+      "start": { "x": 0, "z": 0, "dir": "x" },
+      "segments": [
+        { "axis": "x", "length": 9 },
+        { "axis": "z", "length": 7 },
+        { "axis": "x", "length": 8 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 10 },
+        { "axis": "z", "length": 5 },
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 8 },
+        { "axis": "x", "length": 6 },
+        { "axis": "z", "length": 9 },
+        { "axis": "x", "length": 5 },
+        { "axis": "z", "length": 7 },
+        { "axis": "x", "length": 8 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 5 }
+      ],
+      "gems": [
+        { "x": 4, "z": 0 }, { "x": 9, "z": 4 }, { "x": 14, "z": 7 },
+        { "x": 17, "z": 11 }, { "x": 22, "z": 13 }, { "x": 27, "z": 18 },
+        { "x": 32, "z": 22 }, { "x": 37, "z": 27 }, { "x": 41, "z": 32 },
+        { "x": 46, "z": 36 }, { "x": 50, "z": 42 }, { "x": 55, "z": 47 }
+      ],
+      "decor": [
+        { "x": -3, "z": -2, "type": "block", "size": 1.2 },
+        { "x": 5, "z": -3, "type": "block", "size": 0.7 },
+        { "x": 12, "z": 3, "type": "block", "size": 1.0 },
+        { "x": 19, "z": 9, "type": "block", "size": 0.9 },
+        { "x": 26, "z": 14, "type": "block", "size": 1.3 },
+        { "x": 34, "z": 21, "type": "block", "size": 1.0 },
+        { "x": 42, "z": 28, "type": "block", "size": 0.8 },
+        { "x": 49, "z": 36, "type": "block", "size": 1.1 }
+      ]
+    },
     "winter": {
       "id": "winter",
       "name": "The Winter",
@@ -294,6 +345,174 @@
         { "x": 48, "z": 36, "type": "block", "size": 0.8 },
         { "x": 56, "z": 44, "type": "block", "size": 1.1 },
         { "x": 64, "z": 52, "type": "block", "size": 1.0 }
+      ]
+    },
+    "earth": {
+      "id": "earth",
+      "name": "The Earth",
+      "ready": true,
+      "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/earth.mp3",
+      "tempo": 5.5,
+      "tile": 1.0,
+      "trailWidth": 0.32,
+      "theme": {
+        "fogNear": 18, "fogFar": 95,
+        "sky": "#0e1a08", "ground": "#3b6220",
+        "tileTop": "#6dbf45", "tileSide": "#1a3810",
+        "line": "#f0ffe6", "glow": "#a0e870",
+        "ambient": "#2a4418", "key": "#eaffe0", "decor": "#4a8a30"
+      },
+      "start": { "x": 0, "z": 0, "dir": "x" },
+      "segments": [
+        { "axis": "x", "length": 8 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 9 },
+        { "axis": "x", "length": 5 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 8 },
+        { "axis": "z", "length": 5 },
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 8 },
+        { "axis": "x", "length": 6 },
+        { "axis": "z", "length": 7 },
+        { "axis": "x", "length": 5 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 9 },
+        { "axis": "z", "length": 5 },
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 8 }
+      ],
+      "gems": [
+        { "x": 4, "z": 0 }, { "x": 8, "z": 3 }, { "x": 12, "z": 6 },
+        { "x": 15, "z": 12 }, { "x": 19, "z": 15 }, { "x": 23, "z": 20 },
+        { "x": 28, "z": 23 }, { "x": 32, "z": 28 }, { "x": 37, "z": 33 },
+        { "x": 41, "z": 38 }, { "x": 46, "z": 42 }, { "x": 52, "z": 47 },
+        { "x": 57, "z": 53 }
+      ],
+      "decor": [
+        { "x": -2, "z": -3, "type": "block", "size": 1.1 },
+        { "x": 6, "z": -2, "type": "block", "size": 0.8 },
+        { "x": 11, "z": 4, "type": "block", "size": 1.0 },
+        { "x": 17, "z": 10, "type": "block", "size": 0.9 },
+        { "x": 24, "z": 16, "type": "block", "size": 1.3 },
+        { "x": 30, "z": 22, "type": "block", "size": 1.0 },
+        { "x": 38, "z": 30, "type": "block", "size": 0.7 },
+        { "x": 45, "z": 37, "type": "block", "size": 1.2 },
+        { "x": 53, "z": 45, "type": "block", "size": 1.0 }
+      ]
+    },
+    "taurus": {
+      "id": "taurus",
+      "name": "The Taurus",
+      "ready": true,
+      "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/taurus.mp3",
+      "tempo": 6.2,
+      "tile": 1.0,
+      "trailWidth": 0.32,
+      "theme": {
+        "fogNear": 15, "fogFar": 85,
+        "sky": "#120a1e", "ground": "#3a1860",
+        "tileTop": "#a45cd4", "tileSide": "#200e38",
+        "line": "#f4e8ff", "glow": "#c894f0",
+        "ambient": "#2a1445", "key": "#f0e0ff", "decor": "#7840a8"
+      },
+      "start": { "x": 0, "z": 0, "dir": "x" },
+      "segments": [
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 5 },
+        { "axis": "x", "length": 6 },
+        { "axis": "z", "length": 7 },
+        { "axis": "x", "length": 5 },
+        { "axis": "z", "length": 4 },
+        { "axis": "x", "length": 8 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 4 },
+        { "axis": "z", "length": 7 },
+        { "axis": "x", "length": 6 },
+        { "axis": "z", "length": 5 },
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 4 },
+        { "axis": "x", "length": 5 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 8 },
+        { "axis": "z", "length": 5 }
+      ],
+      "gems": [
+        { "x": 3, "z": 0 }, { "x": 7, "z": 3 }, { "x": 11, "z": 5 },
+        { "x": 13, "z": 10 }, { "x": 17, "z": 12 }, { "x": 21, "z": 16 },
+        { "x": 25, "z": 20 }, { "x": 29, "z": 24 }, { "x": 34, "z": 28 },
+        { "x": 38, "z": 33 }, { "x": 42, "z": 37 }, { "x": 47, "z": 41 },
+        { "x": 52, "z": 46 }
+      ],
+      "decor": [
+        { "x": -3, "z": -1, "type": "block", "size": 1.0 },
+        { "x": 5, "z": -3, "type": "block", "size": 0.7 },
+        { "x": 10, "z": 2, "type": "block", "size": 1.2 },
+        { "x": 16, "z": 8, "type": "block", "size": 0.9 },
+        { "x": 22, "z": 14, "type": "block", "size": 1.1 },
+        { "x": 30, "z": 20, "type": "block", "size": 0.8 },
+        { "x": 36, "z": 27, "type": "block", "size": 1.3 },
+        { "x": 44, "z": 35, "type": "block", "size": 1.0 },
+        { "x": 50, "z": 42, "type": "block", "size": 0.9 }
+      ]
+    },
+    "crystal": {
+      "id": "crystal",
+      "name": "The Crystal",
+      "ready": true,
+      "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/crystal.mp3",
+      "tempo": 6.8,
+      "tile": 1.0,
+      "trailWidth": 0.32,
+      "theme": {
+        "fogNear": 14, "fogFar": 80,
+        "sky": "#0a0e1e", "ground": "#1c2848",
+        "tileTop": "#7eb8e0", "tileSide": "#102038",
+        "line": "#eaf6ff", "glow": "#a0d4f5",
+        "ambient": "#182840", "key": "#e4f2ff", "decor": "#4a88b8"
+      },
+      "start": { "x": 0, "z": 0, "dir": "x" },
+      "segments": [
+        { "axis": "x", "length": 6 },
+        { "axis": "z", "length": 5 },
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 4 },
+        { "axis": "x", "length": 5 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 4 },
+        { "axis": "z", "length": 7 },
+        { "axis": "x", "length": 6 },
+        { "axis": "z", "length": 5 },
+        { "axis": "x", "length": 8 },
+        { "axis": "z", "length": 4 },
+        { "axis": "x", "length": 5 },
+        { "axis": "z", "length": 6 },
+        { "axis": "x", "length": 7 },
+        { "axis": "z", "length": 5 },
+        { "axis": "x", "length": 4 },
+        { "axis": "z", "length": 7 },
+        { "axis": "x", "length": 6 },
+        { "axis": "z", "length": 5 }
+      ],
+      "gems": [
+        { "x": 3, "z": 0 }, { "x": 6, "z": 3 }, { "x": 10, "z": 5 },
+        { "x": 13, "z": 8 }, { "x": 16, "z": 12 }, { "x": 20, "z": 16 },
+        { "x": 24, "z": 20 }, { "x": 28, "z": 24 }, { "x": 33, "z": 28 },
+        { "x": 37, "z": 32 }, { "x": 41, "z": 36 }, { "x": 45, "z": 40 },
+        { "x": 50, "z": 44 }, { "x": 55, "z": 49 }
+      ],
+      "decor": [
+        { "x": -2, "z": -2, "type": "block", "size": 0.9 },
+        { "x": 4, "z": -3, "type": "block", "size": 0.6 },
+        { "x": 9, "z": 2, "type": "block", "size": 1.1 },
+        { "x": 15, "z": 7, "type": "block", "size": 0.8 },
+        { "x": 21, "z": 13, "type": "block", "size": 1.2 },
+        { "x": 27, "z": 19, "type": "block", "size": 1.0 },
+        { "x": 34, "z": 25, "type": "block", "size": 0.7 },
+        { "x": 40, "z": 32, "type": "block", "size": 1.3 },
+        { "x": 47, "z": 38, "type": "block", "size": 1.0 },
+        { "x": 53, "z": 45, "type": "block", "size": 0.9 }
       ]
     },
     "storm": {
