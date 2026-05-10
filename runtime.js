@@ -49,8 +49,8 @@ class MusicPlayer {
 
 const TURN_TOLERANCE = 0.6;
 const FALL_GRAVITY = 22;
-const TRAIL_HEIGHT = 0.28;
-const PLAYER_SIZE = 0.28;
+const TRAIL_HEIGHT = 0.35;
+const PLAYER_SIZE = 0.35;
 const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
@@ -90,7 +90,7 @@ export class DancingLineGame {
       alpha: true,
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -98,7 +98,7 @@ export class DancingLineGame {
     this.renderer.toneMappingExposure = 1.05;
 
     this._onResize = () => {
-      this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
       if (this.camera) {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
@@ -416,12 +416,14 @@ export class DancingLineGame {
     const aspect = window.innerWidth / window.innerHeight;
     this.camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 300);
 
-    this.camera.position.set(
+    this._camPos = new THREE.Vector3(
       this.position.x + CAM_OFFSET.x,
       CAM_OFFSET.y,
       this.position.z + CAM_OFFSET.z
     );
-    this.camera.lookAt(this.position.x, 0, this.position.z);
+    this._camLook = new THREE.Vector3(this.position.x, 0, this.position.z);
+    this.camera.position.copy(this._camPos);
+    this.camera.lookAt(this._camLook);
   }
 
 
@@ -666,8 +668,10 @@ export class DancingLineGame {
     this.player.rotation.set(0, 0, 0);
     this.player.material.opacity = 1;
     this.player.material.transparent = false;
-    this.camera.position.set(this.position.x + CAM_OFFSET.x, CAM_OFFSET.y, this.position.z + CAM_OFFSET.z);
-    this.camera.lookAt(this.position.x, 0, this.position.z);
+    this._camPos.set(this.position.x + CAM_OFFSET.x, CAM_OFFSET.y, this.position.z + CAM_OFFSET.z);
+    this._camLook.set(this.position.x, 0, this.position.z);
+    this.camera.position.copy(this._camPos);
+    this.camera.lookAt(this._camLook);
     this.music.stop();
     this.onEvent({ type: "reset" });
   }
@@ -771,7 +775,7 @@ export class DancingLineGame {
         b.material.dispose();
         this.bursts.splice(i, 1);
       } else {
-        const scale = 1 + p * 5;
+        const scale = 1 + p * 3.3;
         b.scale.set(scale, scale, 1);
         b.material.opacity = 0.9 * (1 - p);
       }
@@ -780,12 +784,18 @@ export class DancingLineGame {
   }
 
   _updateCamera(dt) {
-    this.camera.position.set(
+    const targetPos = new THREE.Vector3(
       this.position.x + CAM_OFFSET.x,
       CAM_OFFSET.y,
       this.position.z + CAM_OFFSET.z
     );
-    this.camera.lookAt(this.position.x, 0, this.position.z);
+    const targetLook = new THREE.Vector3(this.position.x, 0, this.position.z);
+
+    const s = 1 - Math.pow(0.01, dt);
+    this._camPos.lerp(targetPos, s);
+    this._camLook.lerp(targetLook, s);
+    this.camera.position.copy(this._camPos);
+    this.camera.lookAt(this._camLook);
 
     if (this.dirLight) {
       this.dirLight.position.set(this.position.x + 20, 30, this.position.z + 12);

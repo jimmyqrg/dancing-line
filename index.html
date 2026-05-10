@@ -59,8 +59,7 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      canvas#scene,
-      canvas#game {
+      canvas#scene {
         position: fixed;
         inset: 0;
         z-index: 0;
@@ -68,7 +67,11 @@
       }
 
       canvas#game {
+        position: fixed;
+        top: 0;
+        left: 0;
         z-index: 0;
+        display: block;
       }
 
       .vignette {
