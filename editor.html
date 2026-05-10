@@ -162,7 +162,7 @@
   </div>
   <div class="setup-row">
     <label>Start Width</label>
-    <input type="number" id="start-width" value="1" min="1" max="9">
+    <input type="number" id="start-width" value="1" min="0" max="9">
   </div>
   <div class="setup-row">
     <label>Speed</label>
@@ -234,7 +234,7 @@ const copyBtn = document.getElementById("copy-btn");
 const restartBtn = document.getElementById("restart-btn");
 
 // Width: 1=1x, 9=5x exponential
-function widthScale(w) { return Math.pow(5, (w - 1) / 8); }
+function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
 const STORAGE_KEY = "dl-editor-settings";
 function saveSettings() {
@@ -480,7 +480,7 @@ function startEditor() {
   editorEl.classList.add("active");
 
   segments = [];
-  currentWidth = Math.max(1, Math.min(9, parseInt(startWidthEl.value) || 1));
+  currentWidth = Math.max(0, Math.min(9, parseInt(startWidthEl.value) || 1));
   direction = "x";
   pos = { x: 0, z: 0 };
   currentSegLength = 0;
@@ -554,7 +554,7 @@ function onTap(e) {
 function onKey(e) {
   if (!running) return;
   if (e.code === "Space") { e.preventDefault(); turn(); }
-  else if (e.key >= "1" && e.key <= "9") {
+  else if (e.key >= "0" && e.key <= "9") {
     currentWidth = parseInt(e.key);
     widthDisplay.textContent = "Width: " + currentWidth + " (" + widthScale(currentWidth).toFixed(1) + "x)";
   }

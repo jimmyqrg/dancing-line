@@ -55,11 +55,11 @@ const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.3;
-const CAM_HEIGHT = 7;
-const CAM_BACK = 10;
-const CAM_SIDE = 5;
+const CAM_HEIGHT = 5;
+const CAM_BACK = 8;
+const CAM_SIDE = 3;
 
-function widthScale(w) { return Math.pow(5, (w - 1) / 8); }
+function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
 export class DancingLineGame {
   constructor({ canvas, level, onEvent, audioPlay, musicUrl }) {
@@ -423,20 +423,17 @@ export class DancingLineGame {
 
   _updateCameraTargets() {
     const dir = this.direction;
-    // Perpendicular direction: rotate 90 degrees (−dz, 0, dx)
     const perpX = -dir.z;
     const perpZ = dir.x;
-    // Camera position: behind the player + offset to the side + elevated
     this._camTargetPos = new THREE.Vector3(
       this.position.x - dir.x * CAM_BACK + perpX * CAM_SIDE,
       CAM_HEIGHT,
       this.position.z - dir.z * CAM_BACK + perpZ * CAM_SIDE
     );
-    // Look target: slightly ahead of the player
     this._camTargetLook = new THREE.Vector3(
-      this.position.x + dir.x * 3,
-      0,
-      this.position.z + dir.z * 3
+      this.position.x + dir.x * 5,
+      0.5,
+      this.position.z + dir.z * 5
     );
   }
 
