@@ -1,19 +1,68 @@
 import * as THREE from "three";
 
-const TURN_TOLERANCE = 0.45;
+class MusicPlayer {
+  constructor(url) {
+    this._url = url;
+    this._audio = null;
+    this._ready = false;
+    if (url) {
+      this._audio = new Audio(url);
+      this._audio.preload = "auto";
+      this._audio.addEventListener("canplaythrough", () => { this._ready = true; }, { once: true });
+    }
+  }
+
+  play() {
+    if (!this._audio) return;
+    this._audio.currentTime = 0;
+    this._audio.play().catch(() => {});
+  }
+
+  pause() {
+    if (!this._audio || this._audio.paused) return;
+    this._audio.pause();
+  }
+
+  resume() {
+    if (!this._audio || !this._audio.paused) return;
+    this._audio.play().catch(() => {});
+  }
+
+  stop() {
+    if (!this._audio) return;
+    this._audio.pause();
+    this._audio.currentTime = 0;
+  }
+
+  get currentTime() {
+    return this._audio ? this._audio.currentTime : 0;
+  }
+
+  destroy() {
+    this.stop();
+    if (this._audio) {
+      this._audio.src = "";
+      this._audio = null;
+    }
+  }
+}
+
+const TURN_TOLERANCE = 0.6;
 const FALL_GRAVITY = 22;
 const TRAIL_HEIGHT = 0.32;
 const PLAYER_SIZE = 0.7;
 const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
 const DEATH_FLASH_DURATION = 0.7;
+const OFF_PATH_GRACE = 0.15;
 
 export class DancingLineGame {
-  constructor({ canvas, level, onEvent, audioPlay }) {
+  constructor({ canvas, level, onEvent, audioPlay, musicUrl }) {
     this.canvas = canvas;
     this.level = level;
     this.onEvent = onEvent || (() => {});
     this.audioPlay = audioPlay || (() => {});
+    this.music = new MusicPlayer(musicUrl);
 
     this.state = "ready";
     this.gemsCollected = 0;
@@ -270,6 +319,7 @@ export class DancingLineGame {
     this.distanceTravelled = 0;
 
     this._segmentLastWorld = this.position.clone();
+    this._offPathTimer = 0;
   }
 
   _initCamera() {
@@ -298,12 +348,14 @@ export class DancingLineGame {
   start() {
     this.state = "playing";
     this.startedAt = performance.now();
+    this.music.play();
     this.onEvent({ type: "start" });
   }
 
   pause() {
     if (this.state === "playing") {
       this.state = "paused";
+      this.music.pause();
       this.onEvent({ type: "pause" });
     }
   }
@@ -311,6 +363,7 @@ export class DancingLineGame {
   resume() {
     if (this.state === "paused") {
       this.state = "playing";
+      this.music.resume();
       this.onEvent({ type: "resume" });
     }
   }
@@ -406,6 +459,7 @@ export class DancingLineGame {
     this.state = "dead";
     this.deathTimer = 0;
     this.fallVelocity = 0;
+    this.music.stop();
     this.audioPlay("death");
     this.onEvent({ type: "death", gems: this.gemsCollected });
   }
@@ -413,6 +467,7 @@ export class DancingLineGame {
   _win() {
     if (this.state === "won" || this.state === "dead") return;
     this.state = "won";
+    this.music.stop();
     this.audioPlay("victory");
     this.onEvent({ type: "victory", gems: this.gemsCollected });
   }
@@ -432,6 +487,7 @@ export class DancingLineGame {
     this.state = "ready";
     this.deathTimer = 0;
     this.fallVelocity = 0;
+    this._offPathTimer = 0;
     this.cornerIndex = 0;
     this.distanceTravelled = 0;
     this.position.set(
@@ -449,10 +505,12 @@ export class DancingLineGame {
     this.player.material.transparent = false;
     this.camera.position.copy(this.position).add(this.cameraOffset);
     this.camera.lookAt(this.position);
+    this.music.stop();
     this.onEvent({ type: "reset" });
   }
 
   destroy() {
+    this.music.destroy();
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("keydown", this._onKeyDown);
     this.canvas.removeEventListener("pointerdown", this._onPointerDown);
@@ -490,7 +548,12 @@ export class DancingLineGame {
       this._checkGems();
       this._checkFinish();
 
-      if (!this._isOnPath(this.position)) this._die();
+      if (!this._isOnPath(this.position)) {
+        this._offPathTimer += dt;
+        if (this._offPathTimer >= OFF_PATH_GRACE) this._die();
+      } else {
+        this._offPathTimer = 0;
+      }
 
       const pct = Math.min(1, this.distanceTravelled / this.totalDistance);
       this.onEvent({ type: "progress", value: pct });

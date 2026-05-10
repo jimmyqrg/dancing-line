@@ -933,8 +933,8 @@
       ];
 
       const audioAssets = {
-        death: "assets/audio/death.wav",
-        victory: "assets/audio/victory.wav",
+        death: "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/sound-effects/death.wav",
+        victory: "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/sound-effects/victory.wav",
       };
       const sound = (name) => {
         try {
@@ -1402,7 +1402,7 @@
       function buildLevelData(idx) {
         const meta = LEVELS[idx];
         const data = LEVEL_DATA.levels?.[meta.id];
-        if (!data || !data.ready) return null;
+        if (!data) return null;
         return data;
       }
 
@@ -1410,7 +1410,7 @@
         const lvl = LEVELS[currentIdx];
         const data = buildLevelData(currentIdx);
         if (!data) {
-          showToast("Coming soon");
+          showToast("Level not loaded");
           return;
         }
         gameTitleEl.textContent = lvl.name;
@@ -1430,6 +1430,7 @@
           level: data,
           audioPlay: sound,
           onEvent: handleGameEvent,
+          musicUrl: data.audio || null,
         });
         showScreen("game");
         setTimeout(() => game?.start(), 350);
