@@ -919,7 +919,7 @@
 
         <div class="modal" data-die-modal aria-hidden="true">
           <div class="modal__inner">
-            <h3 class="modal__title">You died</h3>
+            <h3 class="modal__title" data-die-title>0%</h3>
             <p class="gem-tally">
               <svg class="gem" aria-hidden="true"><use href="#i-diamond" /></svg>
               <span data-die-gems>0</span>
@@ -1595,6 +1595,8 @@
             break;
           case "death":
             dieGemsEl.textContent = String(ev.gems);
+            document.querySelector("[data-die-title]").textContent =
+              Math.round(parseFloat(progressEl.style.width) || 0) + "%";
             dieVignette.classList.add("is-active");
             setTimeout(() => showModal(dieModal, true), 700);
             break;
