@@ -159,6 +159,16 @@
         animation: pulse 1.6s ease-in-out infinite;
       }
 
+      .boot__credit {
+        position: absolute;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        letter-spacing: 0.12em;
+        opacity: 0.45;
+      }
+
       @keyframes pulse {
         0%,
         100% {
@@ -234,6 +244,13 @@
         opacity: 0;
         filter: blur(6px);
         transform: translateY(8px);
+      }
+
+      .select__best {
+        font-size: clamp(0.9rem, 2.5vw, 1.3rem);
+        opacity: 0.6;
+        margin-top: 0.4rem;
+        letter-spacing: 0.08em;
       }
 
       .select__bottom {
@@ -828,6 +845,7 @@
           <h1 class="boot__title">Dancing Line</h1>
           <span class="boot__rule" aria-hidden="true"></span>
           <p class="boot__prompt">Tap to start</p>
+          <p class="boot__credit">Ported by JimmyQrg</p>
         </div>
       </section>
 
@@ -852,6 +870,7 @@
               <span data-num>01</span><i>/</i><span data-total>06</span>
             </p>
             <h2 class="select__name" data-name>The Beginning</h2>
+            <p class="select__best" data-best></p>
           </div>
           <button class="arrow" data-next aria-label="Next level">
             <svg class="icon"><use href="#i-chev-right" /></svg>
@@ -1074,6 +1093,17 @@
           tileSide1: "rgba(0, 0, 30, 0.55)",
           tileSide2: "rgba(0, 0, 30, 0.32)",
         },
+        {
+          id: "abs-storm",
+          name: "The Absolute Storm",
+          seed: 97,
+          bg: ["#000000", "#111111", "#2b2b2b"],
+          line: "#ffffff",
+          glow: "rgba(255, 255, 255, 0.5)",
+          tileTop: "rgba(255, 255, 255, 0.12)",
+          tileSide1: "rgba(0, 0, 0, 0.6)",
+          tileSide2: "rgba(0, 0, 0, 0.4)",
+        },
       ];
 
       const audioAssets = {
@@ -1091,13 +1121,26 @@
       };
 
       let LEVEL_DATA = { levels: {} };
-      const levelFiles = ["beginning", "piano", "ocean", "winter", "desert", "earth", "taurus", "crystal", "chaos", "storm"];
+      const levelFiles = ["beginning", "piano", "ocean", "winter", "desert", "earth", "taurus", "crystal", "chaos", "storm", "abs-storm"];
       await Promise.all(levelFiles.map(async (id) => {
         try {
           const res = await fetch(`./levels/${id}.json`, { cache: "no-store" });
           if (res.ok) LEVEL_DATA.levels[id] = await res.json();
         } catch (_) {}
       }));
+
+      // Preload all audio (music + SFX) so playback is instant
+      const preloadedAudio = {};
+      Object.entries(audioAssets).forEach(([name, url]) => {
+        const a = new Audio(); a.preload = "auto"; a.src = url;
+        preloadedAudio[name] = a;
+      });
+      Object.values(LEVEL_DATA.levels).forEach((lvl) => {
+        if (lvl.audio) {
+          const a = new Audio(); a.preload = "auto"; a.src = lvl.audio;
+          preloadedAudio[lvl.audio] = a;
+        }
+      });
 
       // ─────────────────────────────────────────────────────────────
       // Menu canvas (2D ambient)
@@ -1184,16 +1227,16 @@
         return pts[pts.length - 1];
       }
 
-      function tilesAlong(pts) {
+      function tilesAlong(pts, maxTiles = 2000) {
         const seen = new Set();
         const arr = [];
-        for (let i = 1; i < pts.length; i++) {
+        for (let i = 1; i < pts.length && arr.length < maxTiles; i++) {
           const a = pts[i - 1],
             b = pts[i];
           const sx = Math.sign(b.x - a.x),
             sy = Math.sign(b.y - a.y);
           const len = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
-          for (let k = 0; k <= len; k++) {
+          for (let k = 0; k <= len && arr.length < maxTiles; k++) {
             const x = a.x + sx * k;
             const y = a.y + sy * k;
             const key = x + "," + y;
@@ -1223,6 +1266,7 @@
         tiles: [],
         total: 0,
         progress: 0,
+        tempo: 6,
         camera: { x: 0, y: 0 },
         zoom: 0.6,
         alpha: 0.5,
@@ -1231,15 +1275,34 @@
         flash: 0,
       };
 
+      function pathFromSegments(segments, start) {
+        const pts = [{ x: start.x || 0, y: start.z || 0 }];
+        let cx = start.x || 0, cy = start.z || 0;
+        for (const seg of segments) {
+          const len = Math.round(seg.length);
+          if (seg.axis === "x") cx += len;
+          else cy += len;
+          pts.push({ x: cx, y: cy });
+        }
+        return pts;
+      }
+
       function loadLevel(level) {
         scene.level = level;
-        scene.path = makePath(level.seed);
+        const data = LEVEL_DATA.levels?.[level.id];
+        if (data && data.segments) {
+          scene.path = pathFromSegments(data.segments, data.start || { x: 0, z: 0 });
+          scene.tempo = data.tempo || 6;
+        } else {
+          scene.path = makePath(level.seed);
+          scene.tempo = 6;
+        }
         scene.tiles = tilesAlong(scene.path);
         scene.total = pathLength(scene.path);
         scene.progress = 0;
-        const start = iso(scene.path[0].x, scene.path[0].y, isoTile());
-        scene.camera.x = start.x;
-        scene.camera.y = start.y;
+        const startPt = iso(scene.path[0].x, scene.path[0].y, isoTile());
+        scene.camera.x = startPt.x;
+        scene.camera.y = startPt.y;
         applyTheme(level);
       }
 
@@ -1363,12 +1426,13 @@
         last = ts;
 
         if (scene.running) {
-          scene.progress += scene.speed * dt;
+          const baseRate = Math.max(scene.total / 120, 3);
+          scene.progress += baseRate * scene.speed * dt;
           if (scene.progress >= scene.total - 1) {
             scene.progress = 0;
-            const start = iso(scene.path[0].x, scene.path[0].y, isoTile());
-            scene.camera.x = start.x;
-            scene.camera.y = start.y;
+            const startPt = iso(scene.path[0].x, scene.path[0].y, isoTile());
+            scene.camera.x = startPt.x;
+            scene.camera.y = startPt.y;
           }
         }
 
@@ -1452,6 +1516,7 @@
       const numEl = document.querySelector("[data-num]");
       const totalEl = document.querySelector("[data-total]");
       const nameEl = document.querySelector("[data-name]");
+      const bestEl = document.querySelector("[data-best]");
       const dotsEl = document.querySelector("[data-dots]");
       const gameTitleEl = document.querySelector("[data-game-title]");
       const gemsEl = document.querySelector("[data-gems]");
@@ -1468,6 +1533,12 @@
         dotsEl.append(d);
       });
 
+      function updateBest(id) {
+        const prog = getLevelProgress();
+        const best = prog[id];
+        bestEl.textContent = best != null ? `Best: ${best}%` : "";
+      }
+
       function goTo(idx, dir = 1) {
         const next = ((idx % LEVELS.length) + LEVELS.length) % LEVELS.length;
         if (next === currentIdx) return;
@@ -1481,6 +1552,7 @@
         }, 180);
 
         numEl.textContent = String(currentIdx + 1).padStart(2, "0");
+        updateBest(lvl.id);
         dotsEl.querySelectorAll(".dot").forEach((d, i) => {
           d.classList.toggle("is-active", i === currentIdx);
         });
@@ -1552,7 +1624,20 @@
         return data;
       }
 
-      function startLevel() {
+      function ensureAudioLoaded(url) {
+        if (!url) return Promise.resolve();
+        const cached = preloadedAudio[url];
+        if (cached && cached.readyState >= 3) return Promise.resolve();
+        return new Promise((resolve) => {
+          const a = cached || new Audio();
+          if (!cached) { a.preload = "auto"; a.src = url; preloadedAudio[url] = a; }
+          if (a.readyState >= 3) { resolve(); return; }
+          a.addEventListener("canplaythrough", () => resolve(), { once: true });
+          setTimeout(resolve, 3000);
+        });
+      }
+
+      async function startLevel() {
         const lvl = LEVELS[currentIdx];
         const data = buildLevelData(currentIdx);
         if (!data) {
@@ -1567,6 +1652,8 @@
         showModal(winModal, false);
         dieVignette.classList.remove("is-active");
 
+        await ensureAudioLoaded(data.audio);
+
         destroyGame();
         canvas.style.display = "none";
         gameCanvas.style.display = "block";
@@ -1577,9 +1664,21 @@
           audioPlay: sound,
           onEvent: handleGameEvent,
           musicUrl: data.audio || null,
+          preloadedAudioEl: data.audio ? preloadedAudio[data.audio] : null,
         });
         showScreen("game");
         tapPrompt.classList.add("is-active");
+      }
+
+      function getLevelProgress() {
+        try { return JSON.parse(localStorage.getItem("dl_progress")) || {}; } catch (_) { return {}; }
+      }
+      function saveLevelProgress(id, pct) {
+        const prog = getLevelProgress();
+        if ((prog[id] || 0) < pct) {
+          prog[id] = pct;
+          localStorage.setItem("dl_progress", JSON.stringify(prog));
+        }
       }
 
       function handleGameEvent(ev) {
@@ -1593,17 +1692,23 @@
           case "progress":
             progressEl.style.width = (ev.value * 100).toFixed(2) + "%";
             break;
-          case "death":
+          case "death": {
+            const pct = Math.round(parseFloat(progressEl.style.width) || 0);
             dieGemsEl.textContent = String(ev.gems);
-            document.querySelector("[data-die-title]").textContent =
-              Math.round(parseFloat(progressEl.style.width) || 0) + "%";
+            document.querySelector("[data-die-title]").textContent = pct + "%";
             dieVignette.classList.add("is-active");
             setTimeout(() => showModal(dieModal, true), 700);
+            const lvl = LEVELS[currentIdx];
+            if (lvl) saveLevelProgress(lvl.id, pct);
             break;
-          case "victory":
+          }
+          case "victory": {
             winGemsEl.textContent = String(ev.gems);
             setTimeout(() => showModal(winModal, true), 600);
+            const lvl = LEVELS[currentIdx];
+            if (lvl) saveLevelProgress(lvl.id, 100);
             break;
+          }
         }
       }
 
@@ -1625,6 +1730,7 @@
         showModal(winModal, false);
         dieVignette.classList.remove("is-active");
         destroyGame();
+        updateBest(LEVELS[currentIdx].id);
         showScreen("select");
       }
 
@@ -1703,6 +1809,7 @@
       // ─────────────────────────────────────────────────────────────
 
       loadLevel(LEVELS[0]);
+      updateBest(LEVELS[0].id);
       setMode("boot");
       scene.zoom = MODES.boot.focus;
       scene.alpha = MODES.boot.alpha;

@@ -1,11 +1,18 @@
 import * as THREE from "three";
 
 class MusicPlayer {
-  constructor(url) {
+  constructor(url, preloadedElement) {
     this._url = url;
     this._audio = null;
     this._ready = false;
-    if (url) {
+    if (preloadedElement) {
+      this._audio = preloadedElement.cloneNode();
+      this._audio.preload = "auto";
+      this._ready = preloadedElement.readyState >= 3;
+      if (!this._ready) {
+        this._audio.addEventListener("canplaythrough", () => { this._ready = true; }, { once: true });
+      }
+    } else if (url) {
       this._audio = new Audio(url);
       this._audio.preload = "auto";
       this._audio.addEventListener("canplaythrough", () => { this._ready = true; }, { once: true });
@@ -55,17 +62,17 @@ const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.3;
-const CAM_OFFSET = { x: -10, y: 8, z: -10 };
+const CAM_OFFSET = { x: -10, y: 11, z: -10 };
 
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
 export class DancingLineGame {
-  constructor({ canvas, level, onEvent, audioPlay, musicUrl }) {
+  constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl }) {
     this.canvas = canvas;
     this.level = level;
     this.onEvent = onEvent || (() => {});
     this.audioPlay = audioPlay || (() => {});
-    this.music = new MusicPlayer(musicUrl);
+    this.music = new MusicPlayer(musicUrl, preloadedAudioEl);
 
     this.state = "ready";
     this.gemsCollected = 0;
@@ -375,10 +382,11 @@ export class DancingLineGame {
 
     const playerGeom = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
     const playerMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
+      color: new THREE.Color(t.line),
       emissive: new THREE.Color(t.line),
-      emissiveIntensity: 0.45,
-      roughness: 0.4,
+      emissiveIntensity: 0.55,
+      roughness: 0.45,
+      metalness: 0.1,
     });
     const player = new THREE.Mesh(playerGeom, playerMat);
     player.castShadow = true;
@@ -446,7 +454,7 @@ export class DancingLineGame {
     this.state = "playing";
     this.startedAt = performance.now();
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
-    const delay = firstLen / (this.level.tempo || 6);
+    const delay = firstLen / (this.level.tempo || 6) + (this.level.audioDelay || 0);
     if (delay > 0) {
       setTimeout(() => this.music.play(), delay * 1000);
     } else {
