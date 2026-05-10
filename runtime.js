@@ -56,7 +56,7 @@ const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.3;
 const CAM_OFFSET = { x: -10, y: 8, z: -10 };
-const CAM_LERP = 0.02;
+const CAM_LERP = 0.0001;
 
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
@@ -329,7 +329,6 @@ export class DancingLineGame {
       marker.rotation.z = Math.PI / 4;
       marker.position.set(c.x * tile, 0.02, c.z * tile);
       marker.userData.triggered = false;
-      marker.userData.animTime = 0;
       this.scene.add(marker);
       this.markers.push(marker);
     }
@@ -503,12 +502,6 @@ export class DancingLineGame {
     const dx = Math.abs(this.lastCornerPos.x - expected.x);
     const dz = Math.abs(this.lastCornerPos.z - expected.z);
     if (dx <= TURN_TOLERANCE && dz <= TURN_TOLERANCE) {
-      const markerIdx = this.cornerIndex;
-      if (markerIdx < this.markers.length) {
-        const m = this.markers[markerIdx];
-        m.visible = false;
-        this._spawnBurst(m.position);
-      }
       this.cornerIndex += 1;
     }
   }
@@ -527,6 +520,20 @@ export class DancingLineGame {
     burst.userData.elapsed = 0;
     this.scene.add(burst);
     this.bursts.push(burst);
+  }
+
+  _checkMarkers() {
+    const radius = 0.5;
+    for (const m of this.markers) {
+      if (m.userData.triggered) continue;
+      const dx = this.position.x - m.position.x;
+      const dz = this.position.z - m.position.z;
+      if (Math.abs(dx) < radius && Math.abs(dz) < radius) {
+        m.userData.triggered = true;
+        m.visible = false;
+        this._spawnBurst(m.position);
+      }
+    }
   }
 
   _dropTrailUpTo(pos) {
@@ -618,6 +625,7 @@ export class DancingLineGame {
       gem.position.copy(gem.userData.basePos);
     }
     for (const m of this.markers) {
+      m.userData.triggered = false;
       m.visible = true;
       m.scale.set(1, 1, 1);
       m.material.opacity = 0.4;
@@ -704,6 +712,7 @@ export class DancingLineGame {
 
       this.player.position.copy(this.position);
 
+      this._checkMarkers();
       this._checkGems();
       this._checkFinish();
 
