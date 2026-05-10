@@ -315,6 +315,7 @@ export class DancingLineGame {
 
     const markerGeom = new THREE.PlaneGeometry(0.7, 0.7);
     this.markers = [];
+    this.bursts = [];
     for (let ci = 1; ci < this.corners.length - 1; ci++) {
       const c = this.corners[ci];
       const mat = new THREE.MeshBasicMaterial({
@@ -415,11 +416,7 @@ export class DancingLineGame {
       CAM_OFFSET.y,
       this.position.z + CAM_OFFSET.z
     );
-    this._camLook = new THREE.Vector3(
-      this.position.x + this.direction.x * 5,
-      0,
-      this.position.z + this.direction.z * 5
-    );
+    this._camLook = new THREE.Vector3(this.position.x, 0, this.position.z);
 
     this.camera.position.copy(this._camPos);
     this.camera.lookAt(this._camLook);
@@ -500,17 +497,30 @@ export class DancingLineGame {
     const dx = Math.abs(this.lastCornerPos.x - expected.x);
     const dz = Math.abs(this.lastCornerPos.z - expected.z);
     if (dx <= TURN_TOLERANCE && dz <= TURN_TOLERANCE) {
-      // Trigger the marker animation (cornerIndex is 0-based, markers skip first corner)
       const markerIdx = this.cornerIndex;
       if (markerIdx < this.markers.length) {
         const m = this.markers[markerIdx];
-        m.userData.triggered = true;
-        m.userData.animTime = 0;
-        m.material.color.set(0xffdd00);
-        m.material.opacity = 1.0;
+        m.visible = false;
+        this._spawnBurst(m.position);
       }
       this.cornerIndex += 1;
     }
+  }
+
+  _spawnBurst(position) {
+    const geom = new THREE.PlaneGeometry(1, 1);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffdd00,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+    });
+    const burst = new THREE.Mesh(geom, mat);
+    burst.rotation.x = -Math.PI / 2;
+    burst.position.set(position.x, 0.03, position.z);
+    burst.userData.elapsed = 0;
+    this.scene.add(burst);
+    this.bursts.push(burst);
   }
 
   _dropTrailUpTo(pos) {
@@ -602,13 +612,16 @@ export class DancingLineGame {
       gem.position.copy(gem.userData.basePos);
     }
     for (const m of this.markers) {
-      m.userData.triggered = false;
-      m.userData.animTime = 0;
       m.visible = true;
       m.scale.set(1, 1, 1);
       m.material.opacity = 0.4;
-      m.material.color.set(this.level.theme.line);
     }
+    for (const b of this.bursts) {
+      this.scene.remove(b);
+      b.geometry.dispose();
+      b.material.dispose();
+    }
+    this.bursts = [];
     this.gemsCollected = 0;
     this.state = "ready";
     this.fallTimer = 0;
@@ -632,7 +645,7 @@ export class DancingLineGame {
     this.player.material.opacity = 1;
     this.player.material.transparent = false;
     this._camPos.set(this.position.x + CAM_OFFSET.x, CAM_OFFSET.y, this.position.z + CAM_OFFSET.z);
-    this._camLook.set(this.position.x + this.direction.x * 5, 0, this.position.z + this.direction.z * 5);
+    this._camLook.set(this.position.x, 0, this.position.z);
     this.camera.position.copy(this._camPos);
     this.camera.lookAt(this._camLook);
     this.music.stop();
@@ -728,33 +741,31 @@ export class DancingLineGame {
       gem.rotation.y += dt * 1.6;
       gem.position.y = gem.userData.basePos.y + Math.sin(t * 2 + gem.position.x) * 0.08;
     }
-    for (const m of this.markers) {
-      if (!m.userData.triggered) continue;
-      m.userData.animTime += dt;
-      const p = m.userData.animTime / 0.4;
+    for (let i = this.bursts.length - 1; i >= 0; i--) {
+      const b = this.bursts[i];
+      b.userData.elapsed += dt;
+      const p = b.userData.elapsed / 0.5;
       if (p >= 1) {
-        m.visible = false;
+        this.scene.remove(b);
+        b.geometry.dispose();
+        b.material.dispose();
+        this.bursts.splice(i, 1);
       } else {
-        const scale = 1 + p * 3;
-        m.scale.set(scale, scale, 1);
-        m.material.opacity = 1 - p;
+        const scale = 1 + p * 5;
+        b.scale.set(scale, scale, 1);
+        b.material.opacity = 0.9 * (1 - p);
       }
     }
     this._updateCamera(dt);
   }
 
   _updateCamera(dt) {
-    const lookAhead = 5;
     const targetPos = new THREE.Vector3(
       this.position.x + CAM_OFFSET.x,
       CAM_OFFSET.y,
       this.position.z + CAM_OFFSET.z
     );
-    const targetLook = new THREE.Vector3(
-      this.position.x + this.direction.x * lookAhead,
-      0,
-      this.position.z + this.direction.z * lookAhead
-    );
+    const targetLook = new THREE.Vector3(this.position.x, 0, this.position.z);
 
     const s = 1 - Math.pow(CAM_LERP, dt);
     this._camPos.lerp(targetPos, s);
