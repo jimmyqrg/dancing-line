@@ -53,11 +53,11 @@ const TRAIL_HEIGHT = 0.28;
 const PLAYER_SIZE = 0.28;
 const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
-const DEATH_FLASH_DURATION = 0.7;
-const OFF_PATH_GRACE = 0.15;
-const CAM_HEIGHT = 10;
-const CAM_BACK = 12;
-const CAM_LOOK_AHEAD = 4;
+const FALL_DURATION = 1.0;
+const OFF_PATH_GRACE = 0.6;
+const CAM_HEIGHT = 9;
+const CAM_DISTANCE = 11;
+const CAM_LOOK_AHEAD = 6;
 
 function widthScale(w) { return Math.pow(5, (w - 1) / 8); }
 
@@ -373,17 +373,6 @@ export class DancingLineGame {
     this.scene.add(player);
     this.player = player;
 
-    const glowMat = new THREE.SpriteMaterial({
-      color: new THREE.Color(t.glow || t.line),
-      transparent: true,
-      opacity: 0.55,
-      depthWrite: false,
-    });
-    const glow = new THREE.Sprite(glowMat);
-    glow.scale.set(2.4, 2.4, 1);
-    this.player.add(glow);
-    this.headGlow = glow;
-
     this.trailGroup = new THREE.Group();
     this.scene.add(this.trailGroup);
     this.trailMaterial = new THREE.MeshStandardMaterial({
@@ -406,6 +395,7 @@ export class DancingLineGame {
     this.distanceTravelled = 0;
 
     this._segmentLastWorld = this.position.clone();
+    this._lastOnPathPos = this.position.clone();
     this._offPathTimer = 0;
   }
 
@@ -424,21 +414,19 @@ export class DancingLineGame {
   }
 
   _updateCameraTargets() {
-    const dir = this.direction;
-    // Camera sits behind the player: offset is -direction * CAM_BACK, elevated by CAM_HEIGHT
-    // Also offset diagonally for the isometric Dancing Line feel
-    const backX = -dir.x * CAM_BACK + -dir.z * CAM_BACK * 0.5;
-    const backZ = -dir.z * CAM_BACK + -dir.x * CAM_BACK * 0.5;
+    // Camera behind the player (negative x and z), elevated
+    // Look target is AHEAD of the player so the path stretches into center of screen
     this._camTargetPos = new THREE.Vector3(
-      this.position.x + backX,
+      this.position.x - CAM_DISTANCE,
       CAM_HEIGHT,
-      this.position.z + backZ
+      this.position.z - CAM_DISTANCE
     );
-    // Look ahead of the player
+    // Look ahead in both +x and +z so the path (which goes in those directions)
+    // appears centered on screen, and the player sits in the lower-left area
     this._camTargetLook = new THREE.Vector3(
-      this.position.x + dir.x * CAM_LOOK_AHEAD,
+      this.position.x + CAM_LOOK_AHEAD,
       0,
-      this.position.z + dir.z * CAM_LOOK_AHEAD
+      this.position.z + CAM_LOOK_AHEAD
     );
   }
 
@@ -490,14 +478,16 @@ export class DancingLineGame {
       this.start();
       return;
     }
-    if (this.state !== "playing") return;
+    if (this.state !== "playing" && this.state !== "falling") return;
     if (this.direction.x !== 0) {
       this.direction.set(0, 0, 1);
     } else {
       this.direction.set(1, 0, 0);
     }
 
-    this._dropTrailUpTo(this.position.clone());
+    if (this._isOnPath(this.position)) {
+      this._dropTrailUpTo(this.position.clone());
+    }
     this.lastCornerPos = this.position.clone();
     this._evaluateTurnCorrectness();
 
@@ -544,17 +534,32 @@ export class DancingLineGame {
   }
 
   _isOnPath(pos) {
+    const PAD = 0.4;
     if (this.hasSegmentWidths) {
       for (const r of this.pathRects) {
-        if (pos.x >= r.minX && pos.x <= r.maxX &&
-            pos.z >= r.minZ && pos.z <= r.maxZ) return true;
+        if (pos.x >= r.minX - PAD && pos.x <= r.maxX + PAD &&
+            pos.z >= r.minZ - PAD && pos.z <= r.maxZ + PAD) return true;
       }
       return false;
     }
     const tile = this.level.tile;
-    const tx = Math.round(pos.x / tile);
-    const tz = Math.round(pos.z / tile);
-    return this.pathTiles.has(`${tx},${tz}`);
+    const fx = pos.x / tile;
+    const fz = pos.z / tile;
+    const tx = Math.round(fx);
+    const tz = Math.round(fz);
+    if (this.pathTiles.has(`${tx},${tz}`)) return true;
+    // If the player is near a tile edge, check the adjacent tile in that direction
+    const offX = fx - tx;
+    const offZ = fz - tz;
+    if (Math.abs(offX) > 0.3) {
+      const nx = tx + Math.sign(offX);
+      if (this.pathTiles.has(`${nx},${tz}`)) return true;
+    }
+    if (Math.abs(offZ) > 0.3) {
+      const nz = tz + Math.sign(offZ);
+      if (this.pathTiles.has(`${tx},${nz}`)) return true;
+    }
+    return false;
   }
 
   _checkGems() {
@@ -578,13 +583,13 @@ export class DancingLineGame {
   }
 
   _die() {
-    if (this.state === "dead" || this.state === "won") return;
-    this.state = "dead";
-    this.deathTimer = 0;
+    if (this.state === "dead" || this.state === "falling" || this.state === "won") return;
+    // Drop the last trail segment up to where the player left the path
+    this._dropTrailUpTo(this._lastOnPathPos || this.position.clone());
+    this.state = "falling";
+    this.fallTimer = 0;
     this.fallVelocity = 0;
     this.music.stop();
-    this.audioPlay("death");
-    this.onEvent({ type: "death", gems: this.gemsCollected });
   }
 
   _win() {
@@ -608,7 +613,7 @@ export class DancingLineGame {
     }
     this.gemsCollected = 0;
     this.state = "ready";
-    this.deathTimer = 0;
+    this.fallTimer = 0;
     this.fallVelocity = 0;
     this._offPathTimer = 0;
     this._deathSignaled = false;
@@ -621,6 +626,7 @@ export class DancingLineGame {
     );
     this.lastCornerPos = this.position.clone();
     this._segmentLastWorld = this.position.clone();
+    this._lastOnPathPos = this.position.clone();
     this.direction = this.level.start.dir === "x" ? new THREE.Vector3(1, 0, 0)
                                                   : new THREE.Vector3(0, 0, 1);
     this.player.position.copy(this.position);
@@ -670,32 +676,59 @@ export class DancingLineGame {
       this.position.z += this.direction.z * speed * dt;
       this.distanceTravelled += speed * dt;
 
-      this._dropTrailUpTo(this.position.clone());
+      const onPath = this._isOnPath(this.position);
+      if (onPath) {
+        this._lastOnPathPos = this.position.clone();
+        this._offPathTimer = 0;
+        this._dropTrailUpTo(this.position.clone());
+      } else {
+        this._offPathTimer += dt;
+        if (this._offPathTimer >= OFF_PATH_GRACE) this._die();
+      }
 
       this.player.position.copy(this.position);
 
       this._checkGems();
       this._checkFinish();
 
-      if (!this._isOnPath(this.position)) {
-        this._offPathTimer += dt;
-        if (this._offPathTimer >= OFF_PATH_GRACE) this._die();
-      } else {
-        this._offPathTimer = 0;
-      }
-
       const pct = Math.min(1, this.distanceTravelled / this.totalDistance);
       this.onEvent({ type: "progress", value: pct });
-    } else if (this.state === "dead") {
-      this.deathTimer = (this.deathTimer || 0) + dt;
-      this.fallVelocity = (this.fallVelocity || 0) + FALL_GRAVITY * dt;
-      this.position.y -= this.fallVelocity * dt;
-      this.player.position.copy(this.position);
-      this.player.rotation.x += dt * 4;
-      this.player.rotation.z += dt * 5;
-      if (this.deathTimer > DEATH_FLASH_DURATION && !this._deathSignaled) {
-        this._deathSignaled = true;
+
+    } else if (this.state === "falling" && dt > 0) {
+      this.fallTimer += dt;
+      const speed = this.level.tempo;
+      this.position.x += this.direction.x * speed * dt;
+      this.position.z += this.direction.z * speed * dt;
+
+      // Check if the player turned back onto the path — rescue them
+      if (this._isOnPath(this.position)) {
+        this.state = "playing";
+        this.position.y = PLAYER_SIZE / 2 + 0.01;
+        this.fallTimer = 0;
+        this.fallVelocity = 0;
+        this._offPathTimer = 0;
+        this._lastOnPathPos = this.position.clone();
+        this._segmentLastWorld = this.position.clone();
+        this.player.rotation.set(0, 0, 0);
+        this.player.position.copy(this.position);
+        this.music.resume();
+      } else {
+        this.fallVelocity += FALL_GRAVITY * dt;
+        this.position.y -= this.fallVelocity * dt;
+        this.player.position.copy(this.position);
+        this.player.rotation.x += dt * 3;
+        this.player.rotation.z += dt * 4;
+
+        if (this.fallTimer >= FALL_DURATION) {
+          this.state = "dead";
+          this.audioPlay("death");
+          this.onEvent({ type: "death", gems: this.gemsCollected });
+        }
       }
+
+    } else if (this.state === "dead") {
+      // Frozen — do nothing, player stays where it fell
+
     } else if (this.state === "won") {
       this.player.rotation.y += dt * 1.2;
     }
@@ -710,11 +743,6 @@ export class DancingLineGame {
       gem.rotation.y += dt * 1.6;
       gem.position.y = gem.userData.basePos.y + Math.sin(t * 2 + gem.position.x) * 0.08;
     }
-    if (this.headGlow) {
-      const pulse = 2.2 + Math.sin(t * 6) * 0.18;
-      this.headGlow.scale.set(pulse, pulse, 1);
-    }
-
     this._updateCamera(dt);
   }
 
