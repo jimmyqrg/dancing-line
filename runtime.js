@@ -55,9 +55,8 @@ const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.3;
-const CAM_HEIGHT = 8;
-const CAM_OFFSET_X = -10;
-const CAM_OFFSET_Z = -10;
+const CAM_OFFSET = { x: -10, y: 8, z: -10 };
+const CAM_LERP = 0.02;
 
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
@@ -409,31 +408,19 @@ export class DancingLineGame {
 
   _initCamera() {
     const aspect = window.innerWidth / window.innerHeight;
-    this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 300);
+    this.camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 300);
 
-    // Camera behind the player relative to starting direction
-    this._camPos = new THREE.Vector3();
-    this._camLook = new THREE.Vector3();
-    this._updateCameraTargets();
-    this._camPos.copy(this._camTargetPos);
-    this._camLook.copy(this._camTargetLook);
+    this._camPos = new THREE.Vector3(
+      this.position.x + CAM_OFFSET.x,
+      CAM_OFFSET.y,
+      this.position.z + CAM_OFFSET.z
+    );
+    this._camLook = new THREE.Vector3(this.position.x, 0, this.position.z);
+
     this.camera.position.copy(this._camPos);
     this.camera.lookAt(this._camLook);
   }
 
-  _updateCameraTargets() {
-    // Fixed camera angle — never rotates, only translates to follow the player
-    this._camTargetPos = new THREE.Vector3(
-      this.position.x + CAM_OFFSET_X,
-      CAM_HEIGHT,
-      this.position.z + CAM_OFFSET_Z
-    );
-    this._camTargetLook = new THREE.Vector3(
-      this.position.x,
-      0,
-      this.position.z
-    );
-  }
 
   _initInput() {
     this._onPointerDown = (e) => {
@@ -640,9 +627,8 @@ export class DancingLineGame {
     this.player.rotation.set(0, 0, 0);
     this.player.material.opacity = 1;
     this.player.material.transparent = false;
-    this._updateCameraTargets();
-    this._camPos.copy(this._camTargetPos);
-    this._camLook.copy(this._camTargetLook);
+    this._camPos.set(this.position.x + CAM_OFFSET.x, CAM_OFFSET.y, this.position.z + CAM_OFFSET.z);
+    this._camLook.set(this.position.x, 0, this.position.z);
     this.camera.position.copy(this._camPos);
     this.camera.lookAt(this._camLook);
     this.music.stop();
@@ -754,21 +740,22 @@ export class DancingLineGame {
   }
 
   _updateCamera(dt) {
-    this._updateCameraTargets();
-    // Smooth follow — position lerps steadily, no snapping
-    const s = 1 - Math.pow(0.03, dt);
-    this._camPos.lerp(this._camTargetPos, s);
-    this._camLook.lerp(this._camTargetLook, s);
+    const targetPos = new THREE.Vector3(
+      this.position.x + CAM_OFFSET.x,
+      CAM_OFFSET.y,
+      this.position.z + CAM_OFFSET.z
+    );
+    const targetLook = new THREE.Vector3(this.position.x, 0, this.position.z);
+
+    const s = 1 - Math.pow(CAM_LERP, dt);
+    this._camPos.lerp(targetPos, s);
+    this._camLook.lerp(targetLook, s);
+
     this.camera.position.copy(this._camPos);
     this.camera.lookAt(this._camLook);
 
-    // Move directional light to follow the player so shadows stay visible
     if (this.dirLight) {
-      this.dirLight.position.set(
-        this.position.x + 20,
-        30,
-        this.position.z + 12
-      );
+      this.dirLight.position.set(this.position.x + 20, 30, this.position.z + 12);
       this.dirLight.target.position.copy(this.position);
       this.dirLight.target.updateMatrixWorld();
     }
