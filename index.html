@@ -546,6 +546,30 @@
         transform: translate(-50%, -50%) translateY(-1.5rem);
       }
 
+      .tap-prompt {
+        position: absolute;
+        bottom: 18%;
+        left: 50%;
+        z-index: 4;
+        transform: translateX(-50%);
+        color: var(--ink);
+        font-size: clamp(1rem, 1.8vw, 1.3rem);
+        letter-spacing: 0.35em;
+        text-indent: 0.35em;
+        text-transform: uppercase;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .tap-prompt.is-active {
+        animation: tapPulse 1.6s ease-in-out infinite;
+      }
+
+      @keyframes tapPulse {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 1; }
+      }
+
       .vignette--die {
         position: fixed;
         inset: 0;
@@ -610,6 +634,7 @@
     <div class="vignette" aria-hidden="true"></div>
     <div class="vignette--die" data-die-vignette aria-hidden="true"></div>
     <div class="toast" data-toast aria-hidden="true"></div>
+    <div class="tap-prompt" data-tap-prompt aria-hidden="true">Tap to start</div>
 
     <svg width="0" height="0" style="position: absolute; pointer-events: none" aria-hidden="true">
       <defs>
@@ -1374,6 +1399,7 @@
       const winGemsEl = document.querySelector("[data-win-gems]");
       const dieVignette = document.querySelector("[data-die-vignette]");
       const toastEl = document.querySelector("[data-toast]");
+      const tapPrompt = document.querySelector("[data-tap-prompt]");
 
       let game = null;
 
@@ -1433,11 +1459,14 @@
           musicUrl: data.audio || null,
         });
         showScreen("game");
-        setTimeout(() => game?.start(), 350);
+        tapPrompt.classList.add("is-active");
       }
 
       function handleGameEvent(ev) {
         switch (ev.type) {
+          case "start":
+            tapPrompt.classList.remove("is-active");
+            break;
           case "gem":
             gemsEl.textContent = String(ev.count);
             break;
@@ -1466,7 +1495,7 @@
         game.reset();
         gemsEl.textContent = "0";
         progressEl.style.width = "0%";
-        setTimeout(() => game?.start(), 250);
+        tapPrompt.classList.add("is-active");
       }
 
       function quitToSelect() {

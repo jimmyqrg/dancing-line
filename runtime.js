@@ -66,6 +66,7 @@ export class DancingLineGame {
 
     this.state = "ready";
     this.gemsCollected = 0;
+    this._destroyed = false;
 
     this._initRenderer();
     this._initScene();
@@ -239,6 +240,21 @@ export class DancingLineGame {
     this.scene.add(ring);
     this.finishRing = ring;
 
+    const markerGeom = new THREE.RingGeometry(0.3, 0.45, 4);
+    const markerMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(t.line),
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide,
+    });
+    for (let ci = 1; ci < this.corners.length - 1; ci++) {
+      const c = this.corners[ci];
+      const marker = new THREE.Mesh(markerGeom, markerMat);
+      marker.rotation.x = -Math.PI / 2;
+      marker.position.set(c.x * tile, 0.02, c.z * tile);
+      this.scene.add(marker);
+    }
+
     const gemGeom = new THREE.OctahedronGeometry(0.32, 0);
     const gemMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
@@ -374,6 +390,10 @@ export class DancingLineGame {
   }
 
   handleTap() {
+    if (this.state === "ready") {
+      this.start();
+      return;
+    }
     if (this.state !== "playing") return;
     if (this.direction.x !== 0) {
       this.direction.set(0, 0, 1);
@@ -488,6 +508,7 @@ export class DancingLineGame {
     this.deathTimer = 0;
     this.fallVelocity = 0;
     this._offPathTimer = 0;
+    this._deathSignaled = false;
     this.cornerIndex = 0;
     this.distanceTravelled = 0;
     this.position.set(
@@ -510,6 +531,7 @@ export class DancingLineGame {
   }
 
   destroy() {
+    this._destroyed = true;
     this.music.destroy();
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("keydown", this._onKeyDown);
@@ -525,6 +547,7 @@ export class DancingLineGame {
   }
 
   _frame(ts) {
+    if (this._destroyed) return;
     const dt = this._lastTs ? Math.min((ts - this._lastTs) / 1000, 0.05) : 0;
     this._lastTs = ts;
     this._update(dt);
