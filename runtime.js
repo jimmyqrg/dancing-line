@@ -45,7 +45,10 @@ class MusicPlayer {
   }
 
   setRate(rate) {
-    if (this._audio) this._audio.playbackRate = rate;
+    if (this._audio) {
+      this._audio.playbackRate = rate;
+      this._audio.preservesPitch = false;
+    }
   }
 
   get currentTime() {
@@ -94,6 +97,7 @@ export class DancingLineGame {
     this._initScene();
     this._buildPath();
     this._buildWorld();
+    this._initLevelAnimation();
     this._initCamera();
     this._initInput();
     this._initPostProcessing();
@@ -443,6 +447,353 @@ export class DancingLineGame {
     this._liveTrailSeg = null;
     this._lastOnPathPos = this.position.clone();
     this._offPathTimer = 0;
+    this._frustum = new THREE.Frustum();
+    this._projScreenMatrix = new THREE.Matrix4();
+    this._trailCullTimer = 0;
+  }
+
+  _initLevelAnimation() {
+    const id = this.level.id;
+    const tile = this.level.tile || 1;
+    const speed = this.level.tempo * this.speedMult;
+    this._anim = { type: "none" };
+
+    const noAnimIds = ["beginning", "piano", "earth", "spring-festival"];
+    if (noAnimIds.includes(id)) return;
+
+    const startX = this.level.start.x * tile;
+    const startZ = this.level.start.z * tile;
+
+    if (id === "ocean" || id === "dream-of-sky") {
+      const sameHeight = id === "dream-of-sky";
+      const meshes = this.tileMesh.children;
+      const clickDist = speed * 0.3;
+      const revealDist = clickDist * 2;
+      this._anim = {
+        type: "fly-in",
+        meshes: meshes.map((m, i) => {
+          const target = m.position.clone();
+          const randY = sameHeight ? 8 : (4 + Math.random() * 8);
+          const randX = target.x + (Math.random() - 0.5) * 20;
+          const randZ = target.z + (Math.random() - 0.5) * 20;
+          m.position.set(randX, randY, randZ);
+          m.visible = false;
+          return { mesh: m, target, origin: m.position.clone(), revealed: false, t: 0 };
+        }),
+        revealDist,
+        speed: 3.0,
+      };
+    } else if (id === "winter") {
+      const particles = new THREE.BufferGeometry();
+      const count = 600;
+      const positions = new Float32Array(count * 3);
+      const velocities = [];
+      for (let i = 0; i < count; i++) {
+        positions[i * 3] = startX + (Math.random() - 0.5) * 30;
+        positions[i * 3 + 1] = Math.random() * 20;
+        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 30;
+        velocities.push({ x: (Math.random() - 0.5) * 0.5, y: -(1 + Math.random() * 1.5), z: (Math.random() - 0.5) * 0.5 });
+      }
+      particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.8 });
+      const points = new THREE.Points(particles, mat);
+      this.scene.add(points);
+      this._anim = { type: "snow", points, velocities, count };
+    } else if (id === "storm" || id === "storm-remix" || id === "abs-storm") {
+      const particles = new THREE.BufferGeometry();
+      const count = 800;
+      const positions = new Float32Array(count * 3);
+      const velocities = [];
+      for (let i = 0; i < count; i++) {
+        positions[i * 3] = startX + (Math.random() - 0.5) * 30;
+        positions[i * 3 + 1] = Math.random() * 20;
+        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 30;
+        velocities.push({ x: (Math.random() - 0.5) * 2, y: -(8 + Math.random() * 6), z: (Math.random() - 0.5) * 2 });
+      }
+      particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({ color: 0xaabbcc, size: 0.04, transparent: true, opacity: 0.6 });
+      const points = new THREE.Points(particles, mat);
+      this.scene.add(points);
+      this._anim = { type: "rain", points, velocities, count };
+      if (id === "abs-storm") {
+        this._anim.reflection = true;
+        this._reflectionGroup = new THREE.Group();
+        this.scene.add(this._reflectionGroup);
+      }
+    } else if (id === "desert" || id === "west") {
+      this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, 30);
+    } else if (id === "crystal") {
+      const pLight = new THREE.PointLight(this.level.theme.line, 2.5, 12, 2);
+      pLight.position.copy(this.player.position);
+      this.scene.add(pLight);
+      this.scene.fog = new THREE.Fog(this.level.theme.sky, 0, 10);
+      const meshes = this.tileMesh.children;
+      for (const m of meshes) m.visible = false;
+      this._anim = { type: "crystal", pLight, meshes, revealDist: 10 };
+    } else if (id === "war") {
+      this.scene.fog = new THREE.Fog(this.level.theme.sky, 6, 35);
+      const particles = new THREE.BufferGeometry();
+      const count = 300;
+      const positions = new Float32Array(count * 3);
+      const velocities = [];
+      for (let i = 0; i < count; i++) {
+        positions[i * 3] = startX + (Math.random() - 0.5) * 20;
+        positions[i * 3 + 1] = Math.random() * 3;
+        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 20;
+        velocities.push({ x: (Math.random() - 0.5) * 3, y: (Math.random() - 0.5) * 0.5, z: (Math.random() - 0.5) * 3 });
+      }
+      particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({ color: 0x998866, size: 0.06, transparent: true, opacity: 0.5 });
+      const points = new THREE.Points(particles, mat);
+      this.scene.add(points);
+      this._anim = { type: "dust", points, velocities, count };
+    } else if (id === "taurus") {
+      const meshes = this.tileMesh.children;
+      const clickDist = speed * 0.3;
+      const revealDist = clickDist * 3;
+      const cyanColor = new THREE.Color(0x00ffff);
+      this._anim = {
+        type: "taurus",
+        meshes: meshes.map(m => {
+          m.visible = false;
+          return { mesh: m, revealed: false, t: 0 };
+        }),
+        revealDist,
+        cyanColor,
+        fadeDuration: 0.8,
+      };
+    } else if (id === "chaos") {
+      const meshes = this.tileMesh.children;
+      const clickDist = speed * 0.3;
+      const revealDist = clickDist * 2;
+      const animTypes = ["flip", "ascend", "fly-random", "fly-set"];
+      this._anim = {
+        type: "chaos",
+        meshes: meshes.map(m => {
+          const target = m.position.clone();
+          const targetRot = m.rotation.clone();
+          const aType = animTypes[Math.floor(Math.random() * animTypes.length)];
+          m.visible = false;
+          let origin;
+          if (aType === "flip") {
+            origin = target.clone();
+            m.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+          } else if (aType === "ascend") {
+            origin = target.clone();
+            origin.y -= 6 + Math.random() * 4;
+          } else if (aType === "fly-random") {
+            origin = new THREE.Vector3(target.x + (Math.random() - 0.5) * 15, 3 + Math.random() * 8, target.z + (Math.random() - 0.5) * 15);
+          } else {
+            origin = new THREE.Vector3(target.x + (Math.random() - 0.5) * 15, target.y, target.z + (Math.random() - 0.5) * 15);
+          }
+          return { mesh: m, target, targetRot, origin, originRot: m.rotation.clone(), aType, revealed: false, t: 0 };
+        }),
+        revealDist,
+        speed: 2.5,
+      };
+    } else if (id === "samsara") {
+      const meshes = this.tileMesh.children;
+      const clickDist = speed * 0.3;
+      const revealDist = clickDist * 2;
+      this._anim = {
+        type: "samsara",
+        meshes: meshes.map(m => {
+          m.visible = false;
+          return { mesh: m, revealed: false };
+        }),
+        revealDist,
+      };
+    }
+  }
+
+  _updateLevelAnimation(dt) {
+    if (!this._anim || this._anim.type === "none") return;
+    const px = this.position.x;
+    const pz = this.position.z;
+
+    if (this._anim.type === "fly-in") {
+      const a = this._anim;
+      for (const item of a.meshes) {
+        if (!item.revealed) {
+          const dx = item.target.x - px;
+          const dz = item.target.z - pz;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < a.revealDist) {
+            item.revealed = true;
+            item.mesh.visible = true;
+            item.mesh.position.copy(item.origin);
+          }
+        }
+        if (item.revealed && item.t < 1) {
+          item.t = Math.min(1, item.t + dt * a.speed);
+          const e = 1 - Math.pow(1 - item.t, 3);
+          item.mesh.position.lerpVectors(item.origin, item.target, e);
+        }
+      }
+    } else if (this._anim.type === "snow") {
+      const a = this._anim;
+      const pos = a.points.geometry.attributes.position;
+      const arr = pos.array;
+      for (let i = 0; i < a.count; i++) {
+        arr[i * 3] += a.velocities[i].x * dt;
+        arr[i * 3 + 1] += a.velocities[i].y * dt;
+        arr[i * 3 + 2] += a.velocities[i].z * dt;
+        if (arr[i * 3 + 1] < -1) {
+          arr[i * 3] = px + (Math.random() - 0.5) * 30;
+          arr[i * 3 + 1] = 10 + Math.random() * 10;
+          arr[i * 3 + 2] = pz + (Math.random() - 0.5) * 30;
+        }
+      }
+      a.points.position.set(0, 0, 0);
+      pos.needsUpdate = true;
+    } else if (this._anim.type === "rain") {
+      const a = this._anim;
+      const pos = a.points.geometry.attributes.position;
+      const arr = pos.array;
+      for (let i = 0; i < a.count; i++) {
+        arr[i * 3] += a.velocities[i].x * dt;
+        arr[i * 3 + 1] += a.velocities[i].y * dt;
+        arr[i * 3 + 2] += a.velocities[i].z * dt;
+        if (arr[i * 3 + 1] < -1) {
+          arr[i * 3] = px + (Math.random() - 0.5) * 30;
+          arr[i * 3 + 1] = 12 + Math.random() * 8;
+          arr[i * 3 + 2] = pz + (Math.random() - 0.5) * 30;
+        }
+      }
+      pos.needsUpdate = true;
+      if (a.reflection) {
+        this._updateReflection();
+      }
+    } else if (this._anim.type === "crystal") {
+      const a = this._anim;
+      a.pLight.position.set(px, 2, pz);
+      for (const m of a.meshes) {
+        const dx = m.position.x - px;
+        const dz = m.position.z - pz;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        m.visible = dist < a.revealDist;
+      }
+    } else if (this._anim.type === "dust") {
+      const a = this._anim;
+      const pos = a.points.geometry.attributes.position;
+      const arr = pos.array;
+      for (let i = 0; i < a.count; i++) {
+        arr[i * 3] += a.velocities[i].x * dt;
+        arr[i * 3 + 1] += a.velocities[i].y * dt;
+        arr[i * 3 + 2] += a.velocities[i].z * dt;
+        const dx = arr[i * 3] - px;
+        const dz = arr[i * 3 + 2] - pz;
+        if (Math.abs(dx) > 15 || Math.abs(dz) > 15 || arr[i * 3 + 1] < -1 || arr[i * 3 + 1] > 5) {
+          arr[i * 3] = px + (Math.random() - 0.5) * 20;
+          arr[i * 3 + 1] = Math.random() * 3;
+          arr[i * 3 + 2] = pz + (Math.random() - 0.5) * 20;
+        }
+      }
+      pos.needsUpdate = true;
+    } else if (this._anim.type === "taurus") {
+      const a = this._anim;
+      const sideColor = new THREE.Color(this.level.theme.tileSide);
+      const topColor = new THREE.Color(this.level.theme.tileTop);
+      for (const item of a.meshes) {
+        if (!item.revealed) {
+          const dx = item.mesh.position.x - px;
+          const dz = item.mesh.position.z - pz;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < a.revealDist) {
+            item.revealed = true;
+            item.mesh.visible = true;
+            const origMats = Array.isArray(item.mesh.material) ? item.mesh.material : [item.mesh.material];
+            item.mesh.material = origMats.map(m => {
+              const c = m.clone();
+              c.transparent = true;
+              c.opacity = 0.5;
+              c.color.copy(a.cyanColor);
+              return c;
+            });
+            item.origMats = origMats;
+          }
+        }
+        if (item.revealed && item.t < 1) {
+          item.t = Math.min(1, item.t + dt / a.fadeDuration);
+          const mats = Array.isArray(item.mesh.material) ? item.mesh.material : [item.mesh.material];
+          for (let mi = 0; mi < mats.length; mi++) {
+            const mat = mats[mi];
+            mat.opacity = 0.5 + 0.5 * item.t;
+            const targetColor = (mi >= 2 && mi < 4) ? topColor : sideColor;
+            mat.color.lerpColors(a.cyanColor, targetColor, item.t);
+          }
+          if (item.t >= 1) {
+            item.mesh.material = item.origMats;
+          }
+        }
+      }
+    } else if (this._anim.type === "chaos") {
+      const a = this._anim;
+      for (const item of a.meshes) {
+        if (!item.revealed) {
+          const dx = item.target.x - px;
+          const dz = item.target.z - pz;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < a.revealDist) {
+            item.revealed = true;
+            item.mesh.visible = true;
+            item.mesh.position.copy(item.origin);
+            item.mesh.rotation.copy(item.originRot);
+          }
+        }
+        if (item.revealed && item.t < 1) {
+          item.t = Math.min(1, item.t + dt * a.speed);
+          const e = 1 - Math.pow(1 - item.t, 3);
+          item.mesh.position.lerpVectors(item.origin, item.target, e);
+          if (item.aType === "flip") {
+            item.mesh.rotation.x = item.originRot.x * (1 - e);
+            item.mesh.rotation.y = item.originRot.y * (1 - e);
+            item.mesh.rotation.z = item.originRot.z * (1 - e);
+          }
+        }
+      }
+    } else if (this._anim.type === "samsara") {
+      const a = this._anim;
+      for (const item of a.meshes) {
+        if (!item.revealed) {
+          const dx = item.mesh.position.x - px;
+          const dz = item.mesh.position.z - pz;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < a.revealDist) {
+            item.revealed = true;
+            item.mesh.visible = true;
+          }
+        }
+      }
+    }
+  }
+
+  _updateReflection() {
+    const children = this.trailGroup.children;
+    const rg = this._reflectionGroup;
+    while (rg.children.length > children.length) {
+      const c = rg.children[rg.children.length - 1];
+      rg.remove(c);
+      c.geometry?.dispose();
+      c.material?.dispose();
+    }
+    for (let i = 0; i < children.length; i++) {
+      const src = children[i];
+      let ref = rg.children[i];
+      if (!ref) {
+        const mat = new THREE.MeshBasicMaterial({
+          color: src.material.color || new THREE.Color(this.level.theme.line),
+          transparent: true,
+          opacity: 0.15,
+        });
+        ref = new THREE.Mesh(src.geometry, mat);
+        rg.add(ref);
+      } else {
+        ref.geometry = src.geometry;
+      }
+      ref.position.set(src.position.x, -src.position.y - 0.5, src.position.z);
+      ref.scale.set(1, -1, 1);
+    }
   }
 
   _initCamera() {
@@ -490,6 +841,7 @@ export class DancingLineGame {
   start() {
     this.state = "playing";
     this.startedAt = performance.now();
+    this._playingTime = 0;
     const tempo = (this.level.tempo || 6) * this.speedMult;
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
     const baseDelay = 0;
@@ -738,6 +1090,7 @@ export class DancingLineGame {
     this._deathSignaled = false;
     this.cornerIndex = 0;
     this.distanceTravelled = 0;
+    this._playingTime = 0;
     this.position.set(
       this.level.start.x * this.level.tile,
       PLAYER_SIZE / 2 + 0.01,
@@ -758,7 +1111,49 @@ export class DancingLineGame {
     this.camera.position.copy(this._camPos);
     this.camera.lookAt(this._camLook);
     this.music.stop();
+    this._resetLevelAnimation();
     this.onEvent({ type: "reset" });
+  }
+
+  _resetLevelAnimation() {
+    if (!this._anim || this._anim.type === "none") return;
+    const a = this._anim;
+    if (a.type === "fly-in") {
+      for (const item of a.meshes) {
+        item.mesh.position.copy(item.origin);
+        item.mesh.visible = false;
+        item.revealed = false;
+        item.t = 0;
+      }
+    } else if (a.type === "taurus") {
+      for (const item of a.meshes) {
+        if (item.origMats) item.mesh.material = item.origMats;
+        item.mesh.visible = false;
+        item.revealed = false;
+        item.t = 0;
+      }
+    } else if (a.type === "chaos") {
+      for (const item of a.meshes) {
+        item.mesh.visible = false;
+        item.revealed = false;
+        item.t = 0;
+      }
+    } else if (a.type === "samsara") {
+      for (const item of a.meshes) {
+        item.mesh.visible = false;
+        item.revealed = false;
+      }
+    } else if (a.type === "crystal") {
+      for (const m of a.meshes) m.visible = false;
+    }
+    if (this._reflectionGroup) {
+      while (this._reflectionGroup.children.length) {
+        const c = this._reflectionGroup.children[0];
+        this._reflectionGroup.remove(c);
+        c.geometry?.dispose();
+        c.material?.dispose();
+      }
+    }
   }
 
   destroy() {
@@ -792,7 +1187,9 @@ export class DancingLineGame {
     const t = ts(this);
 
     if (this.state === "playing" && dt > 0) {
+      this._playingTime += dt;
       const speed = this.level.tempo * this.speedMult;
+      const expectedDist = speed * this._playingTime;
 
       if (this.autoPlay) {
         const autoDt = Math.min(dt, 1 / 60);
@@ -840,9 +1237,12 @@ export class DancingLineGame {
         this._lastOnPathPos = this.position.clone();
         this._offPathTimer = 0;
       } else {
-        this.position.x += this.direction.x * speed * dt;
-        this.position.z += this.direction.z * speed * dt;
-        this.distanceTravelled += speed * dt;
+        const moveDist = expectedDist - this.distanceTravelled;
+        if (moveDist > 0) {
+          this.position.x += this.direction.x * moveDist;
+          this.position.z += this.direction.z * moveDist;
+          this.distanceTravelled = expectedDist;
+        }
 
         const onPath = this._isOnPath(this.position);
         if (onPath) {
@@ -917,6 +1317,38 @@ export class DancingLineGame {
       }
     }
     this._updateCamera(dt);
+    this._updateLevelAnimation(dt);
+    this._cullTrail(dt);
+  }
+
+  _cullTrail(dt) {
+    this._trailCullTimer += dt;
+    if (this._trailCullTimer < 0.5) return;
+    this._trailCullTimer = 0;
+
+    this._projScreenMatrix.multiplyMatrices(
+      this.camera.projectionMatrix, this.camera.matrixWorldInverse
+    );
+    this._frustum.setFromProjectionMatrix(this._projScreenMatrix);
+
+    const _sphere = new THREE.Sphere();
+    const children = this.trailGroup.children;
+    for (let i = children.length - 1; i >= 0; i--) {
+      const seg = children[i];
+      if (seg === this._liveTrailSeg) continue;
+      if (!seg.geometry.boundingSphere) seg.geometry.computeBoundingSphere();
+      _sphere.copy(seg.geometry.boundingSphere).applyMatrix4(seg.matrixWorld);
+      const inView = this._frustum.intersectsSphere(_sphere);
+      if (inView) {
+        seg.userData._offScreenTime = 0;
+      } else {
+        seg.userData._offScreenTime = (seg.userData._offScreenTime || 0) + 0.5;
+        if (seg.userData._offScreenTime >= 1) {
+          this.trailGroup.remove(seg);
+          seg.geometry.dispose();
+        }
+      }
+    }
   }
 
   _updateCamera(dt) {
