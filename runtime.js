@@ -910,7 +910,7 @@ export class DancingLineGame {
       this.handleTap();
     };
     this._onKeyDown = (e) => {
-      if (e.code === "Space" || (e.code >= "KeyA" && e.code <= "KeyZ") || (e.type === "pointerdown" && e.pointerType === "touch")) {
+      if (e.code === "Space" || (e.code >= "KeyA" && e.code <= "KeyZ") || (e.type === "pointerdown" && e.pointerType === "touch" || (e.pointerType === "pen" && e.pointerId !== 1))) {
         e.preventDefault();
         this.handleTap();
       }
