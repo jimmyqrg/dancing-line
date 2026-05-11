@@ -2,6 +2,7 @@
     "name": "The Dream of Sky",
     "tile": 1,
     "tempo": 7,
+    "audioDelay": -0.15,
     "trailWidth": 0.32,
     "glow": false,
     "theme": {
