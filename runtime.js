@@ -81,7 +81,7 @@ export class DancingLineGame {
     this.audioPlay = audioPlay || (() => {});
     this.music = new MusicPlayer(musicUrl, preloadedAudioEl);
     this.autoPlay = autoPlay || false;
-    this.enableGlow = !!enableGlow;
+    this.enableGlow = !!enableGlow && (level.glow === true);
     this.enableClickMarks = enableClickMarks !== false;
     this.invincibility = invincibility || false;
     this.speedMult = 1 + (speedMult || 0);
@@ -330,8 +330,8 @@ export class DancingLineGame {
     this.scene.add(ring);
     this.finishRing = ring;
 
-    const darkMarkerLevels = ["The Beginning", "The Piano", "The Winter", "The Desert", "The Earth"];
-    const markerColor = darkMarkerLevels.includes(this.level.name) ? 0x000000 : 0xffffff;
+    const darkMarkerIds = ["beginning", "piano", "winter", "desert", "earth", "dream-of-sky", "west", "samsara"];
+    const markerColor = darkMarkerIds.includes(this.level.id) ? 0x000000 : 0xffffff;
     const hs = PLAYER_SIZE * 0.75;
     const hi = hs - 0.03;
     const squareShape = new THREE.Shape();
