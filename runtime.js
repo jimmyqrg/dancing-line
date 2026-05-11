@@ -467,8 +467,8 @@ export class DancingLineGame {
     if (id === "ocean" || id === "dream-of-sky") {
       const sameHeight = id === "dream-of-sky";
       const meshes = this.tileMesh.children;
-      const clickDist = speed * 0.3;
-      const revealDist = clickDist * 2;
+      const revealDist = id === "ocean" ? speed * 5 : speed * 3;
+      const flySpeed = id === "ocean" ? 1.0 : 2.0;
       this._anim = {
         type: "fly-in",
         meshes: meshes.map((m, i) => {
@@ -481,37 +481,39 @@ export class DancingLineGame {
           return { mesh: m, target, origin: m.position.clone(), revealed: false, t: 0 };
         }),
         revealDist,
-        speed: 3.0,
+        speed: flySpeed,
       };
     } else if (id === "winter") {
       const particles = new THREE.BufferGeometry();
-      const count = 600;
+      const count = 1200;
       const positions = new Float32Array(count * 3);
       const velocities = [];
       for (let i = 0; i < count; i++) {
-        positions[i * 3] = startX + (Math.random() - 0.5) * 30;
-        positions[i * 3 + 1] = Math.random() * 20;
-        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 30;
-        velocities.push({ x: (Math.random() - 0.5) * 0.5, y: -(1 + Math.random() * 1.5), z: (Math.random() - 0.5) * 0.5 });
+        positions[i * 3] = startX + (Math.random() - 0.5) * 40;
+        positions[i * 3 + 1] = Math.random() * 25;
+        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 40;
+        velocities.push({ x: (Math.random() - 0.5) * 0.8, y: -(1.5 + Math.random() * 2), z: (Math.random() - 0.5) * 0.8 });
       }
       particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-      const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.8 });
+      const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.18, transparent: true, opacity: 0.95 });
       const points = new THREE.Points(particles, mat);
       this.scene.add(points);
       this._anim = { type: "snow", points, velocities, count };
     } else if (id === "storm" || id === "storm-remix" || id === "abs-storm") {
+      const isHeavy = id === "storm" || id === "abs-storm";
       const particles = new THREE.BufferGeometry();
-      const count = 800;
+      const count = isHeavy ? 1500 : 800;
       const positions = new Float32Array(count * 3);
       const velocities = [];
       for (let i = 0; i < count; i++) {
-        positions[i * 3] = startX + (Math.random() - 0.5) * 30;
-        positions[i * 3 + 1] = Math.random() * 20;
-        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 30;
-        velocities.push({ x: (Math.random() - 0.5) * 2, y: -(8 + Math.random() * 6), z: (Math.random() - 0.5) * 2 });
+        positions[i * 3] = startX + (Math.random() - 0.5) * 35;
+        positions[i * 3 + 1] = Math.random() * 22;
+        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 35;
+        velocities.push({ x: (Math.random() - 0.5) * 2.5, y: -(10 + Math.random() * 8), z: (Math.random() - 0.5) * 2.5 });
       }
       particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-      const mat = new THREE.PointsMaterial({ color: 0xaabbcc, size: 0.04, transparent: true, opacity: 0.6 });
+      const rainSize = isHeavy ? 0.12 : 0.05;
+      const mat = new THREE.PointsMaterial({ color: 0xccddee, size: rainSize, transparent: true, opacity: 0.75, sizeAttenuation: true });
       const points = new THREE.Points(particles, mat);
       this.scene.add(points);
       this._anim = { type: "rain", points, velocities, count };
@@ -523,13 +525,22 @@ export class DancingLineGame {
     } else if (id === "desert" || id === "west") {
       this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, 30);
     } else if (id === "crystal") {
-      const pLight = new THREE.PointLight(this.level.theme.line, 2.5, 12, 2);
+      const pLight = new THREE.PointLight(this.level.theme.line, 4, 20, 1.5);
       pLight.position.copy(this.player.position);
+      pLight.position.y = 3;
       this.scene.add(pLight);
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 0, 10);
+      const ambient2 = new THREE.AmbientLight(this.level.theme.line, 0.15);
+      this.scene.add(ambient2);
+      this.scene.fog = new THREE.Fog(this.level.theme.sky, 3, 18);
       const meshes = this.tileMesh.children;
-      for (const m of meshes) m.visible = false;
-      this._anim = { type: "crystal", pLight, meshes, revealDist: 10 };
+      const litTopMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.level.theme.tileTop), roughness: 0.6, metalness: 0.2 });
+      const litSideMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.level.theme.tileSide), roughness: 0.6, metalness: 0.2 });
+      const litMats = [litSideMat, litSideMat, litTopMat, litTopMat, litSideMat, litSideMat];
+      for (const m of meshes) {
+        m.visible = false;
+        m.material = litMats;
+      }
+      this._anim = { type: "crystal", pLight, meshes, revealDist: 16 };
     } else if (id === "war") {
       this.scene.fog = new THREE.Fog(this.level.theme.sky, 6, 35);
       const particles = new THREE.BufferGeometry();
@@ -547,10 +558,26 @@ export class DancingLineGame {
       const points = new THREE.Points(particles, mat);
       this.scene.add(points);
       this._anim = { type: "dust", points, velocities, count };
+    } else if (id === "legend-of-assassin") {
+      this.scene.fog = new THREE.Fog(this.level.theme.sky, 2, 18);
+      const particles = new THREE.BufferGeometry();
+      const count = 600;
+      const positions = new Float32Array(count * 3);
+      const velocities = [];
+      for (let i = 0; i < count; i++) {
+        positions[i * 3] = startX + (Math.random() - 0.5) * 20;
+        positions[i * 3 + 1] = Math.random() * 4;
+        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 20;
+        velocities.push({ x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 0.8, z: (Math.random() - 0.5) * 4 });
+      }
+      particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({ color: 0x665544, size: 0.09, transparent: true, opacity: 0.7 });
+      const points = new THREE.Points(particles, mat);
+      this.scene.add(points);
+      this._anim = { type: "dust", points, velocities, count };
     } else if (id === "taurus") {
       const meshes = this.tileMesh.children;
-      const clickDist = speed * 0.3;
-      const revealDist = clickDist * 3;
+      const revealDist = speed * 3;
       const cyanColor = new THREE.Color(0x00ffff);
       this._anim = {
         type: "taurus",
@@ -560,12 +587,11 @@ export class DancingLineGame {
         }),
         revealDist,
         cyanColor,
-        fadeDuration: 0.8,
+        fadeDuration: 0.6,
       };
     } else if (id === "chaos") {
       const meshes = this.tileMesh.children;
-      const clickDist = speed * 0.3;
-      const revealDist = clickDist * 2;
+      const revealDist = speed * 3;
       const animTypes = ["flip", "ascend", "fly-random", "fly-set"];
       this._anim = {
         type: "chaos",
@@ -589,12 +615,11 @@ export class DancingLineGame {
           return { mesh: m, target, targetRot, origin, originRot: m.rotation.clone(), aType, revealed: false, t: 0 };
         }),
         revealDist,
-        speed: 2.5,
+        speed: 1.5,
       };
     } else if (id === "samsara") {
       const meshes = this.tileMesh.children;
-      const clickDist = speed * 0.3;
-      const revealDist = clickDist * 2;
+      const revealDist = speed * 2;
       this._anim = {
         type: "samsara",
         meshes: meshes.map(m => {
@@ -638,13 +663,14 @@ export class DancingLineGame {
         arr[i * 3] += a.velocities[i].x * dt;
         arr[i * 3 + 1] += a.velocities[i].y * dt;
         arr[i * 3 + 2] += a.velocities[i].z * dt;
-        if (arr[i * 3 + 1] < -1) {
+        const dx = arr[i * 3] - px;
+        const dz = arr[i * 3 + 2] - pz;
+        if (arr[i * 3 + 1] < -1 || Math.abs(dx) > 15 || Math.abs(dz) > 15) {
           arr[i * 3] = px + (Math.random() - 0.5) * 30;
           arr[i * 3 + 1] = 10 + Math.random() * 10;
           arr[i * 3 + 2] = pz + (Math.random() - 0.5) * 30;
         }
       }
-      a.points.position.set(0, 0, 0);
       pos.needsUpdate = true;
     } else if (this._anim.type === "rain") {
       const a = this._anim;
@@ -654,7 +680,9 @@ export class DancingLineGame {
         arr[i * 3] += a.velocities[i].x * dt;
         arr[i * 3 + 1] += a.velocities[i].y * dt;
         arr[i * 3 + 2] += a.velocities[i].z * dt;
-        if (arr[i * 3 + 1] < -1) {
+        const dx = arr[i * 3] - px;
+        const dz = arr[i * 3 + 2] - pz;
+        if (arr[i * 3 + 1] < -1 || Math.abs(dx) > 15 || Math.abs(dz) > 15) {
           arr[i * 3] = px + (Math.random() - 0.5) * 30;
           arr[i * 3 + 1] = 12 + Math.random() * 8;
           arr[i * 3 + 2] = pz + (Math.random() - 0.5) * 30;
@@ -666,7 +694,7 @@ export class DancingLineGame {
       }
     } else if (this._anim.type === "crystal") {
       const a = this._anim;
-      a.pLight.position.set(px, 2, pz);
+      a.pLight.position.set(px, 3, pz);
       for (const m of a.meshes) {
         const dx = m.position.x - px;
         const dz = m.position.z - pz;
@@ -784,15 +812,17 @@ export class DancingLineGame {
         const mat = new THREE.MeshBasicMaterial({
           color: src.material.color || new THREE.Color(this.level.theme.line),
           transparent: true,
-          opacity: 0.15,
+          opacity: 0.2,
+          depthWrite: false,
         });
         ref = new THREE.Mesh(src.geometry, mat);
         rg.add(ref);
       } else {
         ref.geometry = src.geometry;
       }
-      ref.position.set(src.position.x, -src.position.y - 0.5, src.position.z);
-      ref.scale.set(1, -1, 1);
+      ref.position.set(src.position.x, -0.24, src.position.z);
+      ref.scale.copy(src.scale);
+      ref.scale.y = 0.05;
     }
   }
 
@@ -844,8 +874,8 @@ export class DancingLineGame {
     this._playingTime = 0;
     const tempo = (this.level.tempo || 6) * this.speedMult;
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
-    const baseDelay = 0;
-    const delay = firstLen / tempo + (this.level.audioDelay || 0);
+    const baseDelay = 0.476 / tempo;
+    const delay = firstLen / tempo + baseDelay + (this.level.audioDelay || 0);
     setTimeout(() => {
       this.music.setRate(this.speedMult);
       this.music.play();
