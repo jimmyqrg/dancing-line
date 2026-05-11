@@ -427,6 +427,23 @@ export class DancingLineGame {
     this.scene.add(player);
     this.player = player;
 
+    const reflectMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(t.line),
+      emissive: new THREE.Color(t.line),
+      emissiveIntensity: glowIntensity * 0.4,
+      roughness: 0.6,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.25,
+      depthWrite: false,
+    });
+    const reflectPlayer = new THREE.Mesh(playerGeom, reflectMat);
+    reflectPlayer.scale.set(1, -1, 1);
+    reflectPlayer.renderOrder = -1;
+    this.scene.add(reflectPlayer);
+    this._reflectPlayer = reflectPlayer;
+    this._reflectMat = reflectMat;
+
     this.trailGroup = new THREE.Group();
     this.scene.add(this.trailGroup);
     this.trailMaterial = new THREE.MeshStandardMaterial({
@@ -934,6 +951,7 @@ export class DancingLineGame {
   start() {
     this.state = "playing";
     this.startedAt = performance.now();
+    this._lastTs = 0;
     this._playingTime = 0;
     const tempo = (this.level.tempo || 6) * this.speedMult;
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
@@ -1206,6 +1224,10 @@ export class DancingLineGame {
     this.player.rotation.set(0, 0, 0);
     this.player.material.opacity = 1;
     this.player.material.transparent = false;
+    if (this._reflectPlayer) {
+      this._reflectPlayer.position.set(this.position.x, -this.position.y - 0.5, this.position.z);
+      this._reflectPlayer.visible = true;
+    }
     this._camPos.set(this.position.x + CAM_OFFSET.x, CAM_OFFSET.y, this.position.z + CAM_OFFSET.z);
     this._camLook.set(this.position.x, 0, this.position.z);
     this.camera.position.copy(this._camPos);
@@ -1419,6 +1441,14 @@ export class DancingLineGame {
         b.scale.set(scale, scale, 1);
         b.material.opacity = 0.95 * Math.pow(1 - p, 2);
       }
+    }
+    if (this._reflectPlayer) {
+      this._reflectPlayer.position.set(
+        this.player.position.x,
+        -this.player.position.y - 0.5,
+        this.player.position.z
+      );
+      this._reflectPlayer.visible = this.state !== "dead";
     }
     this._updateCamera(dt);
     this._updateLevelAnimation(dt);

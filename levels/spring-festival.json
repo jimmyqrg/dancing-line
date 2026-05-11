@@ -5,8 +5,8 @@
   "trailWidth": 0.32,
   "glow": false,
   "theme": {
-    "sky": "#000000",
-    "ground": "#000000",
+    "sky": "#ffffff",
+    "ground": "#ffffff",
     "tileTop": "#6b6b6b",
     "tileSide": "#404040",
     "line": "#ff000d",

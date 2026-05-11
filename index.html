@@ -236,7 +236,7 @@
 
       .select__top {
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto 1fr auto auto;
         align-items: center;
         gap: 1rem;
         padding: 0.4rem 0.4rem 0;
@@ -1008,6 +1008,10 @@
             stroke-linecap="round"
           />
         </symbol>
+        <symbol id="i-edit" viewBox="0 0 24 24">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
       </defs>
     </svg>
 
@@ -1035,6 +1039,9 @@
             <svg class="icon"><use href="#i-home" /></svg>
           </button>
           <p class="select__heading" data-select-heading>Select Level</p>
+          <a class="ico" href="editor.html" aria-label="Level Editor">
+            <svg class="icon"><use href="#i-edit" /></svg>
+          </a>
           <button class="ico" data-settings-open aria-label="Settings">
             <svg class="icon"><use href="#i-settings" /></svg>
           </button>
