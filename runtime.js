@@ -905,12 +905,20 @@ export class DancingLineGame {
   }
 
   _initInput() {
+    if (this.canvas) {
+      this.canvas.style.touchAction = "none";
+      this.canvas.style.webkitUserSelect = "none";
+      this.canvas.style.userSelect = "none";
+    }
+  
     this._onPointerDown = (e) => {
       if (e.target && e.target.closest("button")) return;
+      
       const isTouch = e.pointerType === "touch";
-      const isSpecialPen = e.pointerType === "pen" && e.pointerId !== 1;
-  
-      if (isTouch || isSpecialPen) {
+      const isPen = e.pointerType === "pen";
+      
+      if (isTouch || isPen) {
+        if (e.cancelable) e.preventDefault(); 
         this.handleTap();
       }
     };
@@ -925,8 +933,8 @@ export class DancingLineGame {
       }
     };
   
-    this.canvas.addEventListener("pointerdown", this._onPointerDown);
-    window.addEventListener("keydown", this._onKeyDown);
+    this.canvas.addEventListener("pointerdown", this._onPointerDown, { passive: false });
+    window.addEventListener("keydown", this._onKeyDown, { passive: false });
   }
 
   start() {
