@@ -489,9 +489,9 @@ export class DancingLineGame {
       const positions = new Float32Array(count * 3);
       const velocities = [];
       for (let i = 0; i < count; i++) {
-        positions[i * 3] = startX + (Math.random() - 0.5) * 40;
+        positions[i * 3] = (Math.random() - 0.5) * 40;
         positions[i * 3 + 1] = Math.random() * 25;
-        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 40;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 40;
         velocities.push({ x: (Math.random() - 0.5) * 0.8, y: -(1.5 + Math.random() * 2), z: (Math.random() - 0.5) * 0.8 });
       }
       particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -506,9 +506,9 @@ export class DancingLineGame {
       const positions = new Float32Array(count * 3);
       const velocities = [];
       for (let i = 0; i < count; i++) {
-        positions[i * 3] = startX + (Math.random() - 0.5) * 35;
+        positions[i * 3] = (Math.random() - 0.5) * 35;
         positions[i * 3 + 1] = Math.random() * 22;
-        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 35;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 35;
         velocities.push({ x: (Math.random() - 0.5) * 2.5, y: -(10 + Math.random() * 8), z: (Math.random() - 0.5) * 2.5 });
       }
       particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -548,9 +548,9 @@ export class DancingLineGame {
       const positions = new Float32Array(count * 3);
       const velocities = [];
       for (let i = 0; i < count; i++) {
-        positions[i * 3] = startX + (Math.random() - 0.5) * 20;
+        positions[i * 3] = (Math.random() - 0.5) * 20;
         positions[i * 3 + 1] = Math.random() * 3;
-        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 20;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
         velocities.push({ x: (Math.random() - 0.5) * 3, y: (Math.random() - 0.5) * 0.5, z: (Math.random() - 0.5) * 3 });
       }
       particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -559,15 +559,15 @@ export class DancingLineGame {
       this.scene.add(points);
       this._anim = { type: "dust", points, velocities, count };
     } else if (id === "legend-of-assassin") {
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 2, 18);
+      this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, 30);
       const particles = new THREE.BufferGeometry();
       const count = 600;
       const positions = new Float32Array(count * 3);
       const velocities = [];
       for (let i = 0; i < count; i++) {
-        positions[i * 3] = startX + (Math.random() - 0.5) * 20;
+        positions[i * 3] = (Math.random() - 0.5) * 20;
         positions[i * 3 + 1] = Math.random() * 4;
-        positions[i * 3 + 2] = startZ + (Math.random() - 0.5) * 20;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
         velocities.push({ x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 0.8, z: (Math.random() - 0.5) * 4 });
       }
       particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -590,8 +590,9 @@ export class DancingLineGame {
         fadeDuration: 0.6,
       };
     } else if (id === "chaos") {
+      this.scene.fog = new THREE.Fog(this.level.theme.sky, 6, 40);
       const meshes = this.tileMesh.children;
-      const revealDist = speed * 3;
+      const revealDist = speed * 1.8;
       const animTypes = ["flip", "ascend", "fly-random", "fly-set"];
       this._anim = {
         type: "chaos",
@@ -615,7 +616,7 @@ export class DancingLineGame {
           return { mesh: m, target, targetRot, origin, originRot: m.rotation.clone(), aType, revealed: false, t: 0 };
         }),
         revealDist,
-        speed: 1.5,
+        speed: 2.0,
       };
     } else if (id === "samsara") {
       const meshes = this.tileMesh.children;
@@ -657,35 +658,33 @@ export class DancingLineGame {
       }
     } else if (this._anim.type === "snow") {
       const a = this._anim;
+      a.points.position.set(px, 0, pz);
       const pos = a.points.geometry.attributes.position;
       const arr = pos.array;
       for (let i = 0; i < a.count; i++) {
         arr[i * 3] += a.velocities[i].x * dt;
         arr[i * 3 + 1] += a.velocities[i].y * dt;
         arr[i * 3 + 2] += a.velocities[i].z * dt;
-        const dx = arr[i * 3] - px;
-        const dz = arr[i * 3 + 2] - pz;
-        if (arr[i * 3 + 1] < -1 || Math.abs(dx) > 15 || Math.abs(dz) > 15) {
-          arr[i * 3] = px + (Math.random() - 0.5) * 30;
-          arr[i * 3 + 1] = 10 + Math.random() * 10;
-          arr[i * 3 + 2] = pz + (Math.random() - 0.5) * 30;
+        if (arr[i * 3 + 1] < -12 || Math.abs(arr[i * 3]) > 20 || Math.abs(arr[i * 3 + 2]) > 20) {
+          arr[i * 3] = (Math.random() - 0.5) * 40;
+          arr[i * 3 + 1] = 10 + Math.random() * 15;
+          arr[i * 3 + 2] = (Math.random() - 0.5) * 40;
         }
       }
       pos.needsUpdate = true;
     } else if (this._anim.type === "rain") {
       const a = this._anim;
+      a.points.position.set(px, 0, pz);
       const pos = a.points.geometry.attributes.position;
       const arr = pos.array;
       for (let i = 0; i < a.count; i++) {
         arr[i * 3] += a.velocities[i].x * dt;
         arr[i * 3 + 1] += a.velocities[i].y * dt;
         arr[i * 3 + 2] += a.velocities[i].z * dt;
-        const dx = arr[i * 3] - px;
-        const dz = arr[i * 3 + 2] - pz;
-        if (arr[i * 3 + 1] < -1 || Math.abs(dx) > 15 || Math.abs(dz) > 15) {
-          arr[i * 3] = px + (Math.random() - 0.5) * 30;
-          arr[i * 3 + 1] = 12 + Math.random() * 8;
-          arr[i * 3 + 2] = pz + (Math.random() - 0.5) * 30;
+        if (arr[i * 3 + 1] < -1 || Math.abs(arr[i * 3]) > 18 || Math.abs(arr[i * 3 + 2]) > 18) {
+          arr[i * 3] = (Math.random() - 0.5) * 35;
+          arr[i * 3 + 1] = 12 + Math.random() * 10;
+          arr[i * 3 + 2] = (Math.random() - 0.5) * 35;
         }
       }
       pos.needsUpdate = true;
@@ -703,18 +702,17 @@ export class DancingLineGame {
       }
     } else if (this._anim.type === "dust") {
       const a = this._anim;
+      a.points.position.set(px, 0, pz);
       const pos = a.points.geometry.attributes.position;
       const arr = pos.array;
       for (let i = 0; i < a.count; i++) {
         arr[i * 3] += a.velocities[i].x * dt;
         arr[i * 3 + 1] += a.velocities[i].y * dt;
         arr[i * 3 + 2] += a.velocities[i].z * dt;
-        const dx = arr[i * 3] - px;
-        const dz = arr[i * 3 + 2] - pz;
-        if (Math.abs(dx) > 15 || Math.abs(dz) > 15 || arr[i * 3 + 1] < -1 || arr[i * 3 + 1] > 5) {
-          arr[i * 3] = px + (Math.random() - 0.5) * 20;
+        if (Math.abs(arr[i * 3]) > 12 || Math.abs(arr[i * 3 + 2]) > 12 || arr[i * 3 + 1] < -1 || arr[i * 3 + 1] > 5) {
+          arr[i * 3] = (Math.random() - 0.5) * 20;
           arr[i * 3 + 1] = Math.random() * 3;
-          arr[i * 3 + 2] = pz + (Math.random() - 0.5) * 20;
+          arr[i * 3 + 2] = (Math.random() - 0.5) * 20;
         }
       }
       pos.needsUpdate = true;
