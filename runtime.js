@@ -64,13 +64,13 @@ const PLAYER_SIZE = 0.35;
 const GEM_RADIUS = 0.55;
 const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
-const OFF_PATH_GRACE = 0.3;
+const OFF_PATH_GRACE = 0.35;
 const CAM_OFFSET = { x: -10, y: 11, z: -10 };
 
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
 export class DancingLineGame {
-  constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl, autoPlay, enableGlow }) {
+  constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl, autoPlay, enableGlow, enableClickMarks, invincibility }) {
     this.canvas = canvas;
     this.level = level;
     this.onEvent = onEvent || (() => {});
@@ -78,6 +78,8 @@ export class DancingLineGame {
     this.music = new MusicPlayer(musicUrl, preloadedAudioEl);
     this.autoPlay = autoPlay || false;
     this.enableGlow = enableGlow && (level.glow === true);
+    this.enableClickMarks = enableClickMarks !== false;
+    this.invincibility = invincibility || false;
 
     this.state = "ready";
     this.gemsCollected = 0;
@@ -132,13 +134,13 @@ export class DancingLineGame {
     this.scene.background = new THREE.Color(t.sky);
     this.scene.fog = new THREE.Fog(t.sky, t.fogNear, t.fogFar);
 
-    const hemi = new THREE.HemisphereLight(t.sky, t.ground, 0.55);
+    const hemi = new THREE.HemisphereLight("#ffffff", "#ffffff", 0.4);
     this.scene.add(hemi);
 
-    const ambient = new THREE.AmbientLight(new THREE.Color(t.ambient), 0.45);
+    const ambient = new THREE.AmbientLight("#ffffff", 0.5);
     this.scene.add(ambient);
 
-    const dir = new THREE.DirectionalLight(new THREE.Color(t.key), 1.05);
+    const dir = new THREE.DirectionalLight("#ffffff", 0.6);
     dir.position.set(20, 30, 12);
     dir.castShadow = true;
     dir.shadow.mapSize.set(2048, 2048);
@@ -241,14 +243,20 @@ export class DancingLineGame {
     const t = this.level.theme;
     const tile = this.level.tile;
 
-    const tileTopMat = new THREE.MeshStandardMaterial({
+    const tileTopMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(t.tileTop),
-      roughness: 0.85,
-      metalness: 0.0,
       polygonOffset: true,
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1,
     });
+    const tileSideMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(t.tileSide),
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
+    });
+    // BoxGeometry face order: +x, -x, +y, -y, +z, -z
+    const tileMats = [tileSideMat, tileSideMat, tileTopMat, tileTopMat, tileSideMat, tileSideMat];
 
     if (this.hasSegmentWidths) {
       // Render wide path slabs per segment (editor-style levels)
@@ -267,7 +275,7 @@ export class DancingLineGame {
           0.5,
           seg.axis === "z" ? totalLen : w
         );
-        const mesh = new THREE.Mesh(geom, tileTopMat);
+        const mesh = new THREE.Mesh(geom, tileMats);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         const cx = sx + (seg.axis === "x" ? (len / 2 - ext / 2) : 0);
@@ -282,18 +290,14 @@ export class DancingLineGame {
     } else {
       // Legacy tile-based rendering
       const tileGeom = new THREE.BoxGeometry(tile, 0.5, tile);
-      const tileMesh = new THREE.InstancedMesh(tileGeom, tileTopMat, this.pathTiles.size);
-      tileMesh.castShadow = true;
-      tileMesh.receiveShadow = true;
-      const m = new THREE.Matrix4();
-      let i = 0;
+      const tileGroup = new THREE.Group();
       for (const cell of this.pathTiles.values()) {
-        m.makeTranslation(cell.x * tile, -0.25, cell.z * tile);
-        tileMesh.setMatrixAt(i++, m);
+        const mesh = new THREE.Mesh(tileGeom, tileMats);
+        mesh.position.set(cell.x * tile, -0.25, cell.z * tile);
+        tileGroup.add(mesh);
       }
-      tileMesh.instanceMatrix.needsUpdate = true;
-      this.scene.add(tileMesh);
-      this.tileMesh = tileMesh;
+      this.scene.add(tileGroup);
+      this.tileMesh = tileGroup;
     }
 
     const finishGeom = new THREE.CylinderGeometry(0.7, 0.7, 0.05, 24);
@@ -342,20 +346,22 @@ export class DancingLineGame {
 
     this.markers = [];
     this.bursts = [];
-    for (let ci = 1; ci < this.corners.length - 1; ci++) {
-      const c = this.corners[ci];
-      const mat = new THREE.MeshBasicMaterial({
-        color: markerColor,
-        transparent: true,
-        opacity: 0.5,
-        side: THREE.DoubleSide,
-      });
-      const marker = new THREE.Mesh(markerGeom, mat);
-      marker.rotation.x = -Math.PI / 2;
-      marker.position.set(c.x * tile, 0.02, c.z * tile);
-      marker.userData.triggered = false;
-      this.scene.add(marker);
-      this.markers.push(marker);
+    if (this.enableClickMarks) {
+      for (let ci = 1; ci < this.corners.length - 1; ci++) {
+        const c = this.corners[ci];
+        const mat = new THREE.MeshBasicMaterial({
+          color: markerColor,
+          transparent: true,
+          opacity: 0.5,
+          side: THREE.DoubleSide,
+        });
+        const marker = new THREE.Mesh(markerGeom, mat);
+        marker.rotation.x = -Math.PI / 2;
+        marker.position.set(c.x * tile, 0.02, c.z * tile);
+        marker.userData.triggered = false;
+        this.scene.add(marker);
+        this.markers.push(marker);
+      }
     }
 
     const gemGeom = new THREE.OctahedronGeometry(0.32, 0);
@@ -428,7 +434,8 @@ export class DancingLineGame {
     this.cornerIndex = 0;
     this.distanceTravelled = 0;
 
-    this._segmentLastWorld = this.position.clone();
+    this._trailSegStart = this.position.clone();
+    this._liveTrailSeg = null;
     this._lastOnPathPos = this.position.clone();
     this._offPathTimer = 0;
   }
@@ -480,7 +487,7 @@ export class DancingLineGame {
     this.startedAt = performance.now();
     const tempo = this.level.tempo || 6;
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
-    const baseDelay = 0.476 / tempo;
+    const baseDelay = 0;
     const delay = firstLen / tempo + (this.level.audioDelay || 0) + baseDelay;
     setTimeout(() => this.music.play(), delay * 1000);
     this.onEvent({ type: "start" });
@@ -497,6 +504,7 @@ export class DancingLineGame {
   resume() {
     if (this.state === "paused") {
       this.state = "playing";
+      this._lastTs = 0;
       this.music.resume();
       this.onEvent({ type: "resume" });
     }
@@ -507,26 +515,6 @@ export class DancingLineGame {
     else if (this.state === "paused") this.resume();
   }
 
-  _autoTurn() {
-    if (this.cornerIndex >= this.corners.length - 1) return;
-    const next = this.corners[this.cornerIndex + 1];
-    const tile = this.level.tile || 1;
-    const tx = next.x * tile;
-    const tz = next.z * tile;
-    const dx = tx - this.position.x;
-    const dz = tz - this.position.z;
-    const dist = Math.abs(this.direction.x !== 0 ? dx : dz);
-    if (dist <= TURN_TOLERANCE * 0.5) {
-      this.position.set(tx, this.position.y, tz);
-      if (this.direction.x !== 0) this.direction.set(0, 0, 1);
-      else this.direction.set(1, 0, 0);
-      this._dropTrailUpTo(this.position.clone());
-      this.lastCornerPos = this.position.clone();
-      this.cornerIndex += 1;
-      this._triggerOverlappingMarkers();
-      this.onEvent({ type: "turn", position: this.position.clone() });
-    }
-  }
 
   handleTap() {
     if (this.state === "ready") {
@@ -535,7 +523,7 @@ export class DancingLineGame {
     }
     if (this.autoPlay && this.state === "playing") return;
     if (this.state !== "playing") return;
-    if (!this._isOnPath(this.position)) return;
+    if (!this._isOnPath(this.position) && !this.invincibility) return;
     if (this.direction.x !== 0) {
       this.direction.set(0, 0, 1);
     } else {
@@ -543,6 +531,7 @@ export class DancingLineGame {
     }
 
     this._dropTrailUpTo(this.position.clone());
+    this._commitTrailSegment();
     this.lastCornerPos = this.position.clone();
     this._evaluateTurnCorrectness();
     this._triggerOverlappingMarkers();
@@ -580,11 +569,25 @@ export class DancingLineGame {
   }
 
   _spawnBurst(position) {
+    if (!this._burstTexture) {
+      const size = 128;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      grad.addColorStop(0, "#ff8800");
+      grad.addColorStop(0.5, "#ffbb00");
+      grad.addColorStop(1, "#ffee00");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, size, size);
+      this._burstTexture = new THREE.CanvasTexture(canvas);
+    }
     const geom = new THREE.PlaneGeometry(1, 1);
     const mat = new THREE.MeshBasicMaterial({
-      color: 0xffdd00,
+      map: this._burstTexture,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.95,
       side: THREE.DoubleSide,
     });
     const burst = new THREE.Mesh(geom, mat);
@@ -597,7 +600,7 @@ export class DancingLineGame {
 
 
   _dropTrailUpTo(pos) {
-    const start = this._segmentLastWorld;
+    const start = this._trailSegStart;
     const dx = pos.x - start.x;
     const dz = pos.z - start.z;
     const len = Math.hypot(dx, dz);
@@ -607,21 +610,41 @@ export class DancingLineGame {
     const totalLen = len + ext;
     const isX = Math.abs(dx) > Math.abs(dz);
     const dir = isX ? Math.sign(dx) : Math.sign(dz);
-    const geom = new THREE.BoxGeometry(
-      isX ? totalLen : w,
-      TRAIL_HEIGHT,
-      isX ? w : totalLen,
-    );
-    const seg = new THREE.Mesh(geom, this.trailMaterial);
-    seg.castShadow = !this.enableGlow;
-    seg.receiveShadow = !this.enableGlow;
-    seg.position.set(
-      isX ? (start.x + pos.x) / 2 - (dir * ext) / 2 : start.x,
-      TRAIL_HEIGHT / 2 + 0.01,
-      isX ? start.z : (start.z + pos.z) / 2 - (dir * ext) / 2,
-    );
-    this.trailGroup.add(seg);
-    this._segmentLastWorld = pos.clone();
+
+    if (this._liveTrailSeg) {
+      this._liveTrailSeg.geometry.dispose();
+      this._liveTrailSeg.geometry = new THREE.BoxGeometry(
+        isX ? totalLen : w,
+        TRAIL_HEIGHT,
+        isX ? w : totalLen,
+      );
+      this._liveTrailSeg.position.set(
+        isX ? (start.x + pos.x) / 2 - (dir * ext) / 2 : start.x,
+        TRAIL_HEIGHT / 2 + 0.01,
+        isX ? start.z : (start.z + pos.z) / 2 - (dir * ext) / 2,
+      );
+    } else {
+      const geom = new THREE.BoxGeometry(
+        isX ? totalLen : w,
+        TRAIL_HEIGHT,
+        isX ? w : totalLen,
+      );
+      const seg = new THREE.Mesh(geom, this.trailMaterial);
+      seg.castShadow = !this.enableGlow;
+      seg.receiveShadow = !this.enableGlow;
+      seg.position.set(
+        isX ? (start.x + pos.x) / 2 - (dir * ext) / 2 : start.x,
+        TRAIL_HEIGHT / 2 + 0.01,
+        isX ? start.z : (start.z + pos.z) / 2 - (dir * ext) / 2,
+      );
+      this.trailGroup.add(seg);
+      this._liveTrailSeg = seg;
+    }
+  }
+
+  _commitTrailSegment() {
+    this._liveTrailSeg = null;
+    this._trailSegStart = this.position.clone();
   }
 
   _isOnPath(pos) {
@@ -660,12 +683,12 @@ export class DancingLineGame {
 
   _die() {
     if (this.state === "dead" || this.state === "falling" || this.state === "won") return;
-    // Drop the last trail segment up to where the player left the path
+    if (this.invincibility) return;
     this._dropTrailUpTo(this._lastOnPathPos || this.position.clone());
+    this._commitTrailSegment();
     this.state = "falling";
     this.fallTimer = 0;
     this.fallVelocity = 0;
-    this.music.stop();
   }
 
   _win() {
@@ -713,7 +736,8 @@ export class DancingLineGame {
       this.level.start.z * this.level.tile,
     );
     this.lastCornerPos = this.position.clone();
-    this._segmentLastWorld = this.position.clone();
+    this._trailSegStart = this.position.clone();
+    this._liveTrailSeg = null;
     this._lastOnPathPos = this.position.clone();
     this.direction = this.level.start.dir === "x" ? new THREE.Vector3(1, 0, 0)
                                                   : new THREE.Vector3(0, 0, 1);
@@ -760,21 +784,58 @@ export class DancingLineGame {
     const t = ts(this);
 
     if (this.state === "playing" && dt > 0) {
-      if (this.autoPlay) this._autoTurn();
-
       const speed = this.level.tempo;
-      this.position.x += this.direction.x * speed * dt;
-      this.position.z += this.direction.z * speed * dt;
-      this.distanceTravelled += speed * dt;
 
-      const onPath = this._isOnPath(this.position);
-      if (onPath) {
+      if (this.autoPlay) {
+        const cappedDt = Math.min(dt, 1 / 30);
+        let remaining = speed * cappedDt;
+        while (remaining > 0 && this.state === "playing") {
+          if (this.cornerIndex < this.corners.length - 1) {
+            const next = this.corners[this.cornerIndex + 1];
+            const tile = this.level.tile || 1;
+            const tx = next.x * tile;
+            const tz = next.z * tile;
+            const distToCorner = this.direction.x !== 0
+              ? Math.abs(tx - this.position.x)
+              : Math.abs(tz - this.position.z);
+            if (distToCorner <= remaining) {
+              this.position.set(tx, this.position.y, tz);
+              remaining -= distToCorner;
+              this.distanceTravelled += distToCorner;
+              this._dropTrailUpTo(this.position.clone());
+              this._commitTrailSegment();
+              this.lastCornerPos = this.position.clone();
+              if (this.direction.x !== 0) this.direction.set(0, 0, 1);
+              else this.direction.set(1, 0, 0);
+              this.cornerIndex += 1;
+              this._triggerOverlappingMarkers();
+              continue;
+            }
+          }
+          this.position.x += this.direction.x * remaining;
+          this.position.z += this.direction.z * remaining;
+          this.distanceTravelled += remaining;
+          remaining = 0;
+        }
+        this._dropTrailUpTo(this.position.clone());
         this._lastOnPathPos = this.position.clone();
         this._offPathTimer = 0;
-        this._dropTrailUpTo(this.position.clone());
       } else {
-        this._offPathTimer += dt;
-        if (this._offPathTimer >= OFF_PATH_GRACE) this._die();
+        this.position.x += this.direction.x * speed * dt;
+        this.position.z += this.direction.z * speed * dt;
+        this.distanceTravelled += speed * dt;
+
+        const onPath = this._isOnPath(this.position);
+        if (onPath) {
+          this._lastOnPathPos = this.position.clone();
+          this._offPathTimer = 0;
+          this._dropTrailUpTo(this.position.clone());
+        } else if (this.invincibility) {
+          this._dropTrailUpTo(this.position.clone());
+        } else {
+          this._offPathTimer += dt;
+          if (this._offPathTimer >= OFF_PATH_GRACE) this._die();
+        }
       }
 
       this.player.position.copy(this.position);
@@ -848,7 +909,7 @@ export class DancingLineGame {
     );
     const targetLook = new THREE.Vector3(this.position.x, 0, this.position.z);
 
-    const s = 1 - Math.pow(0.01, dt);
+    const s = 1 - Math.pow(0.12, dt);
     this._camPos.lerp(targetPos, s);
     this._camLook.lerp(targetLook, s);
     this.camera.position.copy(this._camPos);

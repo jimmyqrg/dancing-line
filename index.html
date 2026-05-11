@@ -129,14 +129,16 @@
       /* ───────── BOOT ───────── */
 
       .boot {
-        place-items: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
         padding: 1rem;
       }
 
       .boot__inner {
         text-align: center;
-        transform: translateY(-3vh);
       }
 
       .boot__title {
@@ -159,8 +161,6 @@
       .boot__prompt {
         position: absolute;
         bottom: 18vh;
-        left: 50%;
-        transform: translateX(-50%);
         font-size: clamp(0.95rem, 1.6vw, 1.2rem);
         letter-spacing: 0.5em;
         text-transform: uppercase;
@@ -170,12 +170,10 @@
 
       .boot__credit {
         position: absolute;
-        bottom: 1.2rem;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 0.75rem;
+        bottom: 1.8rem;
+        font-size: 0.78rem;
         letter-spacing: 0.08em;
-        opacity: 0.4;
+        opacity: 0.45;
         white-space: nowrap;
       }
 
@@ -192,6 +190,7 @@
       /* ───────── SELECT ───────── */
 
       .select {
+        display: grid;
         grid-template-rows: auto 1fr auto;
         padding: max(env(safe-area-inset-top), 1.2rem) 1.2rem
           max(env(safe-area-inset-bottom), 1.5rem);
@@ -372,26 +371,29 @@
 
       .test-modal {
         position: fixed; inset: 0; z-index: 50;
-        display: none;
+        display: flex;
         align-items: center; justify-content: center;
-        background: rgba(0, 0, 0, 0.55);
-        backdrop-filter: blur(14px);
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(16px) saturate(1.2);
         padding: 2rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 260ms ease;
       }
+      .test-modal.is-active { opacity: 1; pointer-events: auto; }
       .test-modal__glass {
+        position: relative;
         display: flex; flex-direction: column; gap: 1rem;
         align-items: center;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 1.4rem;
         padding: 2rem;
-        backdrop-filter: blur(20px) saturate(1.4);
-        box-shadow:
-          0 8px 32px rgba(0, 0, 0, 0.3),
-          inset 0 1px 0 rgba(255, 255, 255, 0.15),
-          inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+        transform: scale(0.85) translateY(12px);
+        opacity: 0;
+        transition: transform 300ms cubic-bezier(0.34, 1.4, 0.64, 1), opacity 260ms ease;
       }
-      .test-modal.is-active { display: flex; }
+      .test-modal.is-active .test-modal__glass {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
       .test-modal__title {
         font-size: 1.2rem;
         letter-spacing: 0.2em;
@@ -427,24 +429,27 @@
 
       .settings-modal {
         position: fixed; inset: 0; z-index: 55;
-        display: none;
+        display: flex;
         align-items: center; justify-content: center;
-        background: rgba(0, 0, 0, 0.55);
-        backdrop-filter: blur(14px);
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(16px) saturate(1.2);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 260ms ease;
       }
-      .settings-modal.is-active { display: flex; }
+      .settings-modal.is-active { opacity: 1; pointer-events: auto; }
       .settings-modal__inner {
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 1.4rem;
+        position: relative;
         padding: 2rem 2.4rem;
         min-width: min(85vw, 340px);
         display: flex; flex-direction: column; gap: 1.4rem;
-        backdrop-filter: blur(20px) saturate(1.4);
-        box-shadow:
-          0 8px 32px rgba(0, 0, 0, 0.3),
-          inset 0 1px 0 rgba(255, 255, 255, 0.15),
-          inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+        transform: scale(0.85) translateY(12px);
+        opacity: 0;
+        transition: transform 300ms cubic-bezier(0.34, 1.4, 0.64, 1), opacity 260ms ease;
+      }
+      .settings-modal.is-active .settings-modal__inner {
+        transform: scale(1) translateY(0);
+        opacity: 1;
       }
       .settings-modal__title {
         font-size: 1.3rem;
@@ -485,13 +490,6 @@
         background: #fff; transition: transform 200ms;
       }
       .settings-switch.is-on .settings-switch__thumb { transform: translateX(20px); }
-      .settings-modal__close {
-        align-self: center; padding: 0.5rem 2rem;
-        background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 0.4rem; color: var(--ink); font-size: 0.9rem;
-        letter-spacing: 0.1em; cursor: pointer; transition: background 200ms;
-      }
-      .settings-modal__close:hover { background: rgba(255,255,255,0.2); }
 
       .ico {
         width: 2.6rem;
@@ -558,6 +556,7 @@
       /* ───────── GAME HUD ───────── */
 
       .game {
+        display: grid;
         grid-template-rows: auto 1fr auto;
       }
 
@@ -634,11 +633,11 @@
         z-index: 5;
         display: grid;
         place-items: center;
-        background: rgba(0, 0, 0, 0.55);
-        backdrop-filter: blur(14px);
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(16px) saturate(1.2);
         opacity: 0;
         pointer-events: none;
-        transition: opacity 220ms ease;
+        transition: opacity 260ms ease;
       }
 
       .modal.is-active {
@@ -647,20 +646,38 @@
       }
 
       .modal__inner {
+        position: relative;
         display: grid;
         gap: 0.5rem;
         justify-items: center;
         text-align: center;
         padding: 2rem;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 1.4rem;
-        backdrop-filter: blur(20px) saturate(1.4);
-        box-shadow:
-          0 8px 32px rgba(0, 0, 0, 0.3),
-          inset 0 1px 0 rgba(255, 255, 255, 0.15),
-          inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+        transform: scale(0.85) translateY(12px);
+        opacity: 0;
+        transition: transform 300ms cubic-bezier(0.34, 1.4, 0.64, 1), opacity 260ms ease;
       }
+
+      .modal.is-active .modal__inner {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+
+      .modal__close {
+        position: absolute;
+        top: -2.5rem;
+        right: -0.5rem;
+        width: 2rem;
+        height: 2rem;
+        display: grid;
+        place-items: center;
+        background: none;
+        border: none;
+        color: rgba(255, 255, 255, 0.5);
+        cursor: pointer;
+        transition: color 200ms;
+      }
+      .modal__close:hover { color: rgba(255, 255, 255, 0.85); }
+      .modal__close svg { width: 1.2rem; height: 1.2rem; }
 
       .modal__title {
         font-size: clamp(2.2rem, 7vw, 4.6rem);
@@ -917,6 +934,9 @@
         <symbol id="i-diamond" viewBox="0 0 24 24">
           <path d="M12 3 L21 12 L12 21 L3 12 Z" fill="currentColor" />
         </symbol>
+        <symbol id="i-close" viewBox="0 0 24 24">
+          <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </symbol>
         <symbol id="i-settings" viewBox="0 0 24 24">
           <circle
             cx="12"
@@ -942,9 +962,9 @@
         <div class="boot__inner">
           <h1 class="boot__title" data-i18n="title">Dancing Line</h1>
           <span class="boot__rule" aria-hidden="true"></span>
-          <p class="boot__prompt" data-i18n="tapToStart">Tap to start</p>
-          <p class="boot__credit" data-i18n="credit">Game by Cheetah Mobile, ported by JimmyQrg</p>
         </div>
+        <p class="boot__prompt" data-i18n="tapToStart">Tap to start</p>
+        <p class="boot__credit" data-i18n="credit">Game by Cheetah Mobile, ported by JimmyQrg</p>
       </section>
 
       <!-- Level select -->
@@ -987,11 +1007,13 @@
       <!-- Test level modal -->
       <div class="test-modal" data-test-modal>
         <div class="test-modal__glass">
+          <button class="modal__close" data-test-close aria-label="Close">
+            <svg><use href="#i-close" /></svg>
+          </button>
           <h3 class="test-modal__title" data-i18n="testLevel">Test Level</h3>
           <textarea class="test-modal__input" data-test-json data-i18n-ph="pasteJson" placeholder="Paste level JSON here..."></textarea>
           <div class="test-modal__actions">
             <button class="test-modal__btn" data-test-play data-i18n="play">Play</button>
-            <button class="test-modal__btn" data-test-close data-i18n="cancel">Cancel</button>
           </div>
         </div>
       </div>
@@ -999,6 +1021,9 @@
       <!-- Settings modal -->
       <div class="settings-modal" data-settings-modal>
         <div class="settings-modal__inner">
+          <button class="modal__close" data-settings-close aria-label="Close">
+            <svg><use href="#i-close" /></svg>
+          </button>
           <h3 class="settings-modal__title" data-i18n="settings">Settings</h3>
           <div class="settings-modal__row">
             <label class="settings-label" data-i18n="language">Language</label>
@@ -1019,7 +1044,18 @@
               <span class="settings-switch__track"><span class="settings-switch__thumb"></span></span>
             </button>
           </div>
-          <button class="settings-modal__close" data-settings-close>OK</button>
+          <div class="settings-modal__row">
+            <label class="settings-label" data-i18n="enableClickMarks">Enable Click Marks</label>
+            <button class="settings-switch" data-clickmarks-toggle>
+              <span class="settings-switch__track"><span class="settings-switch__thumb"></span></span>
+            </button>
+          </div>
+          <div class="settings-modal__row">
+            <label class="settings-label" data-i18n="invincibility">Invincibility</label>
+            <button class="settings-switch" data-invincibility-toggle>
+              <span class="settings-switch__track"><span class="settings-switch__thumb"></span></span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1048,6 +1084,9 @@
 
         <div class="modal" data-pause-modal aria-hidden="true">
           <div class="modal__inner">
+            <button class="modal__close" data-resume aria-label="Close">
+              <svg><use href="#i-close" /></svg>
+            </button>
             <h3 class="modal__title" data-i18n="paused">Paused</h3>
             <div class="modal__row">
               <button class="ico-lg" data-resume aria-label="Resume">
@@ -1065,6 +1104,9 @@
 
         <div class="modal" data-die-modal aria-hidden="true">
           <div class="modal__inner">
+            <button class="modal__close" data-die-close aria-label="Close">
+              <svg><use href="#i-close" /></svg>
+            </button>
             <h3 class="modal__title" data-die-title>0%</h3>
             <p class="gem-tally">
               <svg class="gem" aria-hidden="true"><use href="#i-diamond" /></svg>
@@ -1083,6 +1125,9 @@
 
         <div class="modal" data-win-modal aria-hidden="true">
           <div class="modal__inner">
+            <button class="modal__close" data-win-close aria-label="Close">
+              <svg><use href="#i-close" /></svg>
+            </button>
             <p class="modal__sub" data-i18n="levelComplete">Level complete</p>
             <h3 class="modal__title" data-i18n="victory">Victory</h3>
             <p class="gem-tally">
@@ -1800,6 +1845,8 @@
           preloadedAudioEl: data.audio ? preloadedAudio[data.audio] : null,
           autoPlay,
           enableGlow,
+          enableClickMarks,
+          invincibility,
         });
         showScreen("game");
         if (!autoPlay) tapPrompt.classList.add("is-active");
@@ -1834,14 +1881,14 @@
             dieVignette.classList.add("is-active");
             setTimeout(() => showModal(dieModal, true), 700);
             const lvl = LEVELS[currentIdx];
-            if (lvl && !autoPlay) saveLevelProgress(lvl.id, pct);
+            if (lvl && !autoPlay && !invincibility) saveLevelProgress(lvl.id, pct);
             break;
           }
           case "victory": {
             winGemsEl.textContent = String(ev.gems);
             setTimeout(() => showModal(winModal, true), 600);
             const lvl = LEVELS[currentIdx];
-            if (lvl && !autoPlay) saveLevelProgress(lvl.id, 100);
+            if (lvl && !autoPlay && !invincibility) saveLevelProgress(lvl.id, 100);
             break;
           }
         }
@@ -1873,13 +1920,15 @@
 
       const pauseBtn = document.querySelector("[data-pause]");
       pauseBtn.addEventListener("click", () => togglePause());
-      document.querySelector("[data-resume]").addEventListener("click", () => togglePause(false));
+      document.querySelectorAll("[data-resume]").forEach(el => el.addEventListener("click", () => togglePause(false)));
       document.querySelector("[data-restart]").addEventListener("click", restartCurrent);
       document.querySelector("[data-quit]").addEventListener("click", quitToSelect);
       document.querySelector("[data-die-restart]").addEventListener("click", restartCurrent);
       document.querySelector("[data-die-quit]").addEventListener("click", quitToSelect);
+      document.querySelector("[data-die-close]").addEventListener("click", quitToSelect);
       document.querySelector("[data-win-restart]").addEventListener("click", restartCurrent);
       document.querySelector("[data-win-quit]").addEventListener("click", quitToSelect);
+      document.querySelector("[data-win-close]").addEventListener("click", quitToSelect);
 
       // Test level modal
       const testModal = document.querySelector("[data-test-modal]");
@@ -1933,10 +1982,14 @@
       let currentLang = localStorage.getItem("dl_lang") || "en";
       let autoPlay = localStorage.getItem("dl_autoplay") === "1";
       let enableGlow = localStorage.getItem("dl_glow") !== "0";
+      let enableClickMarks = localStorage.getItem("dl_clickmarks") !== "0";
+      let invincibility = localStorage.getItem("dl_invincible") === "1";
 
       const settingsModal = document.querySelector("[data-settings-modal]");
       const autoplayToggle = document.querySelector("[data-autoplay-toggle]");
       const glowToggle = document.querySelector("[data-glow-toggle]");
+      const clickMarksToggle = document.querySelector("[data-clickmarks-toggle]");
+      const invincibilityToggle = document.querySelector("[data-invincibility-toggle]");
       const langBtns = document.querySelectorAll("[data-lang]");
 
       function getLevelDisplayName(lvl) {
@@ -1954,6 +2007,8 @@
           language: "Language",
           autoPlay: "Auto Play",
           enableGlow: "Enable Glow",
+          enableClickMarks: "Enable Click Marks",
+          invincibility: "Invincibility",
           testLevel: "Test Level",
           test: "Test",
           play: "Play",
@@ -1973,6 +2028,8 @@
           language: "语言",
           autoPlay: "自动游玩",
           enableGlow: "启用发光",
+          enableClickMarks: "启用点击标记",
+          invincibility: "无敌模式",
           testLevel: "测试关卡",
           test: "测试",
           play: "开始",
@@ -2012,6 +2069,16 @@
         glowToggle.classList.toggle("is-on", enableGlow);
       }
 
+      function applyClickMarks() {
+        localStorage.setItem("dl_clickmarks", enableClickMarks ? "1" : "0");
+        clickMarksToggle.classList.toggle("is-on", enableClickMarks);
+      }
+
+      function applyInvincibility() {
+        localStorage.setItem("dl_invincible", invincibility ? "1" : "0");
+        invincibilityToggle.classList.toggle("is-on", invincibility);
+      }
+
       langBtns.forEach(btn => btn.addEventListener("click", () => {
         currentLang = btn.dataset.lang;
         applyLang();
@@ -2027,15 +2094,30 @@
         applyGlow();
       });
 
+      clickMarksToggle.addEventListener("click", () => {
+        enableClickMarks = !enableClickMarks;
+        applyClickMarks();
+      });
+
+      invincibilityToggle.addEventListener("click", () => {
+        invincibility = !invincibility;
+        applyInvincibility();
+      });
+
       document.querySelector("[data-settings-open]").addEventListener("click", () => {
         settingsModal.classList.add("is-active");
       });
       document.querySelector("[data-settings-close]").addEventListener("click", () => {
         settingsModal.classList.remove("is-active");
       });
+      settingsModal.addEventListener("click", (e) => {
+        if (e.target === settingsModal) settingsModal.classList.remove("is-active");
+      });
 
       applyAutoPlay();
       applyGlow();
+      applyClickMarks();
+      applyInvincibility();
 
       // ─────────────────────────────────────────────────────────────
 
