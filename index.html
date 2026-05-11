@@ -491,6 +491,21 @@
       }
       .settings-switch.is-on .settings-switch__thumb { transform: translateX(20px); }
 
+      .settings-number {
+        width: 4.5rem;
+        padding: 0.35rem 0.5rem;
+        font-family: inherit;
+        font-size: 0.9rem;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.4rem;
+        text-align: center;
+        outline: none;
+        transition: border-color 200ms;
+      }
+      .settings-number:focus { border-color: rgba(255, 255, 255, 0.5); }
+
       .ico {
         width: 2.6rem;
         height: 2.6rem;
@@ -1056,6 +1071,10 @@
               <span class="settings-switch__track"><span class="settings-switch__thumb"></span></span>
             </button>
           </div>
+          <div class="settings-modal__row">
+            <label class="settings-label" data-i18n="speedMult">Speed Multiplier</label>
+            <input type="number" class="settings-number" data-speed-mult value="0" step="0.1">
+          </div>
         </div>
       </div>
 
@@ -1200,6 +1219,28 @@
           tileSide2: "rgba(0, 30, 60, 0.28)",
         },
         {
+          id: "storm-remix",
+          name: "The Storm Remix",
+          seed: 33,
+          bg: ["#08091a", "#1a2060", "#6058c0"],
+          line: "#ffffff",
+          glow: "rgba(140, 140, 255, 0.6)",
+          tileTop: "rgba(200, 200, 255, 0.16)",
+          tileSide1: "rgba(0, 0, 30, 0.55)",
+          tileSide2: "rgba(0, 0, 30, 0.32)",
+        },
+        {
+          id: "dream-of-sky",
+          name: "The Dreams of Sky",
+          seed: 37,
+          bg: ["#1a5a6e", "#5ec4e0", "#9ee7ff"],
+          line: "#ff333d",
+          glow: "rgba(255, 80, 90, 0.55)",
+          tileTop: "rgba(255, 255, 255, 0.25)",
+          tileSide1: "rgba(0, 40, 60, 0.4)",
+          tileSide2: "rgba(0, 40, 60, 0.25)",
+        },
+        {
           id: "desert",
           name: "The Desert",
           seed: 47,
@@ -1209,6 +1250,17 @@
           tileTop: "rgba(255, 230, 180, 0.18)",
           tileSide1: "rgba(60, 20, 0, 0.5)",
           tileSide2: "rgba(60, 20, 0, 0.32)",
+        },
+        {
+          id: "west",
+          name: "The West",
+          seed: 49,
+          bg: ["#3a2208", "#aa6313", "#d7c379"],
+          line: "#7f34bc",
+          glow: "rgba(150, 80, 210, 0.55)",
+          tileTop: "rgba(220, 200, 140, 0.2)",
+          tileSide1: "rgba(50, 20, 0, 0.5)",
+          tileSide2: "rgba(50, 20, 0, 0.3)",
         },
         {
           id: "earth",
@@ -1244,6 +1296,17 @@
           tileSide2: "rgba(0, 10, 30, 0.3)",
         },
         {
+          id: "war",
+          name: "The War",
+          seed: 71,
+          bg: ["#0d0d0d", "#1a1a1a", "#4f4f4f"],
+          line: "#9c9c9c",
+          glow: "rgba(180, 180, 180, 0.5)",
+          tileTop: "rgba(255, 255, 255, 0.12)",
+          tileSide1: "rgba(0, 0, 0, 0.6)",
+          tileSide2: "rgba(0, 0, 0, 0.4)",
+        },
+        {
           id: "taurus",
           name: "The Taurus",
           seed: 67,
@@ -1255,15 +1318,37 @@
           tileSide2: "rgba(20, 0, 40, 0.3)",
         },
         {
+          id: "spring-festival",
+          name: "The Spring Festival",
+          seed: 77,
+          bg: ["#0a0000", "#1a0000", "#6b0000"],
+          line: "#ff000d",
+          glow: "rgba(255, 50, 50, 0.6)",
+          tileTop: "rgba(255, 200, 200, 0.14)",
+          tileSide1: "rgba(30, 0, 0, 0.55)",
+          tileSide2: "rgba(30, 0, 0, 0.32)",
+        },
+        {
           id: "chaos",
           name: "The Chaos",
           seed: 89,
-          bg: ["#1a0410", "#8d1235", "#ec3f77"],
-          line: "#ffeaf2",
-          glow: "rgba(255, 130, 180, 0.6)",
-          tileTop: "rgba(255, 220, 235, 0.18)",
-          tileSide1: "rgba(40, 0, 10, 0.55)",
-          tileSide2: "rgba(40, 0, 10, 0.32)",
+          bg: ["#1a0e04", "#6b3a10", "#c99b36"],
+          line: "#fff0cc",
+          glow: "rgba(220, 170, 80, 0.6)",
+          tileTop: "rgba(255, 220, 160, 0.18)",
+          tileSide1: "rgba(40, 20, 0, 0.55)",
+          tileSide2: "rgba(40, 20, 0, 0.32)",
+        },
+        {
+          id: "legend-of-assassin",
+          name: "The Legend of Assassin",
+          seed: 91,
+          bg: ["#000000", "#0a0000", "#470000"],
+          line: "#ff333d",
+          glow: "rgba(255, 60, 70, 0.6)",
+          tileTop: "rgba(255, 200, 200, 0.12)",
+          tileSide1: "rgba(20, 0, 0, 0.6)",
+          tileSide2: "rgba(20, 0, 0, 0.4)",
         },
         {
           id: "abs-storm",
@@ -1273,6 +1358,17 @@
           line: "#ffffff",
           glow: "rgba(255, 255, 255, 0.5)",
           tileTop: "rgba(255, 255, 255, 0.12)",
+          tileSide1: "rgba(0, 0, 0, 0.6)",
+          tileSide2: "rgba(0, 0, 0, 0.4)",
+        },
+        {
+          id: "samsara",
+          name: "The Samsara",
+          seed: 101,
+          bg: ["#000000", "#0a0800", "#3d2e00"],
+          line: "#ffa200",
+          glow: "rgba(255, 180, 50, 0.6)",
+          tileTop: "rgba(255, 255, 255, 0.15)",
           tileSide1: "rgba(0, 0, 0, 0.6)",
           tileSide2: "rgba(0, 0, 0, 0.4)",
         },
@@ -1293,7 +1389,7 @@
       };
 
       let LEVEL_DATA = { levels: {} };
-      const levelFiles = ["beginning", "piano", "ocean", "winter", "desert", "earth", "taurus", "crystal", "chaos", "storm", "abs-storm"];
+      const levelFiles = ["beginning", "piano", "ocean", "winter", "storm-remix", "dream-of-sky", "desert", "west", "earth", "storm", "crystal", "war", "taurus", "spring-festival", "chaos", "legend-of-assassin", "abs-storm", "samsara"];
       await Promise.all(levelFiles.map(async (id) => {
         try {
           const res = await fetch(`./levels/${id}.json`, { cache: "no-store" });
@@ -1847,6 +1943,7 @@
           enableGlow,
           enableClickMarks,
           invincibility,
+          speedMult,
         });
         showScreen("game");
         if (!autoPlay) tapPrompt.classList.add("is-active");
@@ -1975,8 +2072,12 @@
 
       const LEVEL_NAMES_ZH = {
         beginning: "时光", piano: "钢琴", ocean: "海洋", winter: "寒冬",
-        desert: "沙漠", earth: "地球", taurus: "金牛座", crystal: "水晶",
-        chaos: "混沌", storm: "风暴", "abs-storm": "风暴之怒",
+        "storm-remix": "风暴·混音", "dream-of-sky": "天空之梦",
+        desert: "沙漠", west: "西部", earth: "地球",
+        storm: "风暴", crystal: "水晶", war: "战争",
+        taurus: "金牛座", "spring-festival": "春节",
+        chaos: "混沌", "legend-of-assassin": "刺客传说",
+        "abs-storm": "风暴之怒", samsara: "轮回",
       };
 
       let currentLang = localStorage.getItem("dl_lang") || "en";
@@ -1984,12 +2085,14 @@
       let enableGlow = localStorage.getItem("dl_glow") !== "0";
       let enableClickMarks = localStorage.getItem("dl_clickmarks") !== "0";
       let invincibility = localStorage.getItem("dl_invincible") === "1";
+      let speedMult = parseFloat(localStorage.getItem("dl_speedmult")) || 0;
 
       const settingsModal = document.querySelector("[data-settings-modal]");
       const autoplayToggle = document.querySelector("[data-autoplay-toggle]");
       const glowToggle = document.querySelector("[data-glow-toggle]");
       const clickMarksToggle = document.querySelector("[data-clickmarks-toggle]");
       const invincibilityToggle = document.querySelector("[data-invincibility-toggle]");
+      const speedMultInput = document.querySelector("[data-speed-mult]");
       const langBtns = document.querySelectorAll("[data-lang]");
 
       function getLevelDisplayName(lvl) {
@@ -2009,6 +2112,7 @@
           enableGlow: "Enable Glow",
           enableClickMarks: "Enable Click Marks",
           invincibility: "Invincibility",
+          speedMult: "Speed Multiplier",
           testLevel: "Test Level",
           test: "Test",
           play: "Play",
@@ -2030,6 +2134,7 @@
           enableGlow: "启用发光",
           enableClickMarks: "启用点击标记",
           invincibility: "无敌模式",
+          speedMult: "速度倍率",
           testLevel: "测试关卡",
           test: "测试",
           play: "开始",
@@ -2079,6 +2184,11 @@
         invincibilityToggle.classList.toggle("is-on", invincibility);
       }
 
+      function applySpeedMult() {
+        localStorage.setItem("dl_speedmult", String(speedMult));
+        speedMultInput.value = speedMult;
+      }
+
       langBtns.forEach(btn => btn.addEventListener("click", () => {
         currentLang = btn.dataset.lang;
         applyLang();
@@ -2104,6 +2214,11 @@
         applyInvincibility();
       });
 
+      speedMultInput.addEventListener("change", () => {
+        speedMult = parseFloat(speedMultInput.value) || 0;
+        applySpeedMult();
+      });
+
       document.querySelector("[data-settings-open]").addEventListener("click", () => {
         settingsModal.classList.add("is-active");
       });
@@ -2118,6 +2233,7 @@
       applyGlow();
       applyClickMarks();
       applyInvincibility();
+      applySpeedMult();
 
       // ─────────────────────────────────────────────────────────────
 

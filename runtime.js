@@ -44,6 +44,10 @@ class MusicPlayer {
     this._audio.currentTime = 0;
   }
 
+  setRate(rate) {
+    if (this._audio) this._audio.playbackRate = rate;
+  }
+
   get currentTime() {
     return this._audio ? this._audio.currentTime : 0;
   }
@@ -70,7 +74,7 @@ const CAM_OFFSET = { x: -10, y: 11, z: -10 };
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
 export class DancingLineGame {
-  constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl, autoPlay, enableGlow, enableClickMarks, invincibility }) {
+  constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl, autoPlay, enableGlow, enableClickMarks, invincibility, speedMult }) {
     this.canvas = canvas;
     this.level = level;
     this.onEvent = onEvent || (() => {});
@@ -80,6 +84,7 @@ export class DancingLineGame {
     this.enableGlow = !!enableGlow;
     this.enableClickMarks = enableClickMarks !== false;
     this.invincibility = invincibility || false;
+    this.speedMult = 1 + (speedMult || 0);
 
     this.state = "ready";
     this.gemsCollected = 0;
@@ -485,11 +490,14 @@ export class DancingLineGame {
   start() {
     this.state = "playing";
     this.startedAt = performance.now();
-    const tempo = this.level.tempo || 6;
+    const tempo = (this.level.tempo || 6) * this.speedMult;
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
     const baseDelay = 0;
-    const delay = firstLen / tempo + (this.level.audioDelay || 0) + baseDelay;
-    setTimeout(() => this.music.play(), delay * 1000);
+    const delay = firstLen / tempo + (this.level.audioDelay || 0);
+    setTimeout(() => {
+      this.music.setRate(this.speedMult);
+      this.music.play();
+    }, delay * 1000);
     this.onEvent({ type: "start" });
   }
 
@@ -784,7 +792,7 @@ export class DancingLineGame {
     const t = ts(this);
 
     if (this.state === "playing" && dt > 0) {
-      const speed = this.level.tempo;
+      const speed = this.level.tempo * this.speedMult;
 
       if (this.autoPlay) {
         const moveDist = speed * dt;
@@ -851,8 +859,7 @@ export class DancingLineGame {
 
     } else if (this.state === "falling" && dt > 0) {
       this.fallTimer += dt;
-      // Keep moving forward while falling
-      const speed = this.level.tempo;
+      const speed = this.level.tempo * this.speedMult;
       this.position.x += this.direction.x * speed * dt;
       this.position.z += this.direction.z * speed * dt;
       // Gravity drop
