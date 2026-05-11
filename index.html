@@ -171,9 +171,9 @@
       .boot__credit {
         position: absolute;
         bottom: 1.8rem;
-        font-size: 0.78rem;
-        letter-spacing: 0.08em;
-        opacity: 0.45;
+        font-size: 0.85rem;
+        letter-spacing: 0.1em;
+        opacity: 0.75;
         white-space: nowrap;
       }
 
@@ -768,6 +768,8 @@
         letter-spacing: 0.35em;
         text-indent: 0.35em;
         text-transform: uppercase;
+        pointer-events: none;
+        opacity: 0;
         opacity: 0;
         pointer-events: none;
       }
@@ -2008,6 +2010,7 @@
         showModal(dieModal, false);
         showModal(winModal, false);
         dieVignette.classList.remove("is-active");
+        tapPrompt.classList.remove("is-active");
         destroyGame();
         updateBest(LEVELS[currentIdx].id);
         showScreen("select");

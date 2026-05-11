@@ -330,7 +330,7 @@ export class DancingLineGame {
     this.scene.add(ring);
     this.finishRing = ring;
 
-    const darkMarkerIds = ["beginning", "piano", "winter", "desert", "earth", "dream-of-sky", "west", "samsara"];
+    const darkMarkerIds = ["beginning", "piano", "winter", "desert", "earth", "dream-of-sky", "west", "samsara", "chaos"];
     const markerColor = darkMarkerIds.includes(this.level.id) ? 0x000000 : 0xffffff;
     const hs = PLAYER_SIZE * 0.75;
     const hi = hs - 0.03;
@@ -352,7 +352,7 @@ export class DancingLineGame {
     this.markers = [];
     this.bursts = [];
     if (this.enableClickMarks) {
-      for (let ci = 1; ci < this.corners.length - 1; ci++) {
+      for (let ci = 2; ci < this.corners.length - 1; ci++) {
         const c = this.corners[ci];
         const mat = new THREE.MeshBasicMaterial({
           color: markerColor,
@@ -447,7 +447,7 @@ export class DancingLineGame {
 
   _initCamera() {
     const aspect = window.innerWidth / window.innerHeight;
-    this.camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 300);
+    this.camera = new THREE.PerspectiveCamera(31, aspect, 0.1, 300);
 
     this._camPos = new THREE.Vector3(
       this.position.x + CAM_OFFSET.x,
@@ -795,29 +795,37 @@ export class DancingLineGame {
       const speed = this.level.tempo * this.speedMult;
 
       if (this.autoPlay) {
-        const moveDist = speed * dt;
+        const autoDt = Math.min(dt, 1 / 60);
+        const moveDist = speed * autoDt;
         if (this.cornerIndex < this.corners.length - 1) {
           const next = this.corners[this.cornerIndex + 1];
           const tile = this.level.tile || 1;
           const tx = next.x * tile;
           const tz = next.z * tile;
-          const distToCorner = this.direction.x !== 0
-            ? Math.abs(tx - this.position.x)
-            : Math.abs(tz - this.position.z);
-          if (distToCorner > 0 && distToCorner <= moveDist) {
+          const distToCorner = Math.abs(tx - this.position.x) + Math.abs(tz - this.position.z);
+          if (distToCorner <= moveDist) {
             this.position.set(tx, this.position.y, tz);
             this.distanceTravelled += distToCorner;
             this._dropTrailUpTo(this.position.clone());
             this._commitTrailSegment();
             this.lastCornerPos = this.position.clone();
-            if (this.direction.x !== 0) this.direction.set(0, 0, 1);
-            else this.direction.set(1, 0, 0);
             this.cornerIndex += 1;
+            if (this.cornerIndex < this.corners.length - 1) {
+              const after = this.corners[this.cornerIndex + 1];
+              const atx = after.x * tile;
+              const atz = after.z * tile;
+              const ddx = atx - tx;
+              const ddz = atz - tz;
+              if (Math.abs(ddx) > Math.abs(ddz)) this.direction.set(ddx > 0 ? 1 : -1, 0, 0);
+              else this.direction.set(0, 0, ddz > 0 ? 1 : -1);
+            }
             this._triggerOverlappingMarkers();
             const leftover = moveDist - distToCorner;
-            this.position.x += this.direction.x * leftover;
-            this.position.z += this.direction.z * leftover;
-            this.distanceTravelled += leftover;
+            if (leftover > 0.001) {
+              this.position.x += this.direction.x * leftover;
+              this.position.z += this.direction.z * leftover;
+              this.distanceTravelled += leftover;
+            }
           } else {
             this.position.x += this.direction.x * moveDist;
             this.position.z += this.direction.z * moveDist;
@@ -919,7 +927,7 @@ export class DancingLineGame {
     );
     const targetLook = new THREE.Vector3(this.position.x, 0, this.position.z);
 
-    const s = 1 - Math.pow(0.12, dt);
+    const s = 1 - Math.pow(0.008, dt);
     this._camPos.lerp(targetPos, s);
     this._camLook.lerp(targetLook, s);
     this.camera.position.copy(this._camPos);
