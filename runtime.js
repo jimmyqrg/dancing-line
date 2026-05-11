@@ -77,7 +77,7 @@ export class DancingLineGame {
     this.audioPlay = audioPlay || (() => {});
     this.music = new MusicPlayer(musicUrl, preloadedAudioEl);
     this.autoPlay = autoPlay || false;
-    this.enableGlow = enableGlow && (level.glow === true);
+    this.enableGlow = !!enableGlow;
     this.enableClickMarks = enableClickMarks !== false;
     this.invincibility = invincibility || false;
 
@@ -787,35 +787,38 @@ export class DancingLineGame {
       const speed = this.level.tempo;
 
       if (this.autoPlay) {
-        const cappedDt = Math.min(dt, 1 / 30);
-        let remaining = speed * cappedDt;
-        while (remaining > 0 && this.state === "playing") {
-          if (this.cornerIndex < this.corners.length - 1) {
-            const next = this.corners[this.cornerIndex + 1];
-            const tile = this.level.tile || 1;
-            const tx = next.x * tile;
-            const tz = next.z * tile;
-            const distToCorner = this.direction.x !== 0
-              ? Math.abs(tx - this.position.x)
-              : Math.abs(tz - this.position.z);
-            if (distToCorner <= remaining) {
-              this.position.set(tx, this.position.y, tz);
-              remaining -= distToCorner;
-              this.distanceTravelled += distToCorner;
-              this._dropTrailUpTo(this.position.clone());
-              this._commitTrailSegment();
-              this.lastCornerPos = this.position.clone();
-              if (this.direction.x !== 0) this.direction.set(0, 0, 1);
-              else this.direction.set(1, 0, 0);
-              this.cornerIndex += 1;
-              this._triggerOverlappingMarkers();
-              continue;
-            }
+        const moveDist = speed * dt;
+        if (this.cornerIndex < this.corners.length - 1) {
+          const next = this.corners[this.cornerIndex + 1];
+          const tile = this.level.tile || 1;
+          const tx = next.x * tile;
+          const tz = next.z * tile;
+          const distToCorner = this.direction.x !== 0
+            ? Math.abs(tx - this.position.x)
+            : Math.abs(tz - this.position.z);
+          if (distToCorner > 0 && distToCorner <= moveDist) {
+            this.position.set(tx, this.position.y, tz);
+            this.distanceTravelled += distToCorner;
+            this._dropTrailUpTo(this.position.clone());
+            this._commitTrailSegment();
+            this.lastCornerPos = this.position.clone();
+            if (this.direction.x !== 0) this.direction.set(0, 0, 1);
+            else this.direction.set(1, 0, 0);
+            this.cornerIndex += 1;
+            this._triggerOverlappingMarkers();
+            const leftover = moveDist - distToCorner;
+            this.position.x += this.direction.x * leftover;
+            this.position.z += this.direction.z * leftover;
+            this.distanceTravelled += leftover;
+          } else {
+            this.position.x += this.direction.x * moveDist;
+            this.position.z += this.direction.z * moveDist;
+            this.distanceTravelled += moveDist;
           }
-          this.position.x += this.direction.x * remaining;
-          this.position.z += this.direction.z * remaining;
-          this.distanceTravelled += remaining;
-          remaining = 0;
+        } else {
+          this.position.x += this.direction.x * moveDist;
+          this.position.z += this.direction.z * moveDist;
+          this.distanceTravelled += moveDist;
         }
         this._dropTrailUpTo(this.position.clone());
         this._lastOnPathPos = this.position.clone();
@@ -895,7 +898,7 @@ export class DancingLineGame {
       } else {
         const scale = 1 + p * 3.3;
         b.scale.set(scale, scale, 1);
-        b.material.opacity = 0.9 * (1 - p);
+        b.material.opacity = 0.95 * Math.pow(1 - p, 2);
       }
     }
     this._updateCamera(dt);

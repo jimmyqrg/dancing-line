@@ -2,7 +2,7 @@
     "name": "The Absolute Storm",
     "tile": 1,
     "tempo": 8,
-    "audioDelay": 0.5,
+    "audioDelay": 0,
     "trailWidth": 0.32,
     "glow": true,
     "theme": {
