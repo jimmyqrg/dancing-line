@@ -907,14 +907,24 @@ export class DancingLineGame {
   _initInput() {
     this._onPointerDown = (e) => {
       if (e.target && e.target.closest("button")) return;
-      this.handleTap();
+      const isTouch = e.pointerType === "touch";
+      const isSpecialPen = e.pointerType === "pen" && e.pointerId !== 1;
+  
+      if (isTouch || isSpecialPen) {
+        this.handleTap();
+      }
     };
+  
     this._onKeyDown = (e) => {
-      if (e.code === "Space" || (e.code >= "KeyA" && e.code <= "KeyZ") || (e.type === "pointerdown" && e.pointerType === "touch") || (e.pointerType === "pen" && e.pointerId !== 1)) {
+      const isSpace = e.code === "Space";
+      const isLetter = e.code >= "KeyA" && e.code <= "KeyZ";
+  
+      if (isSpace || isLetter) {
         e.preventDefault();
         this.handleTap();
       }
     };
+  
     this.canvas.addEventListener("pointerdown", this._onPointerDown);
     window.addEventListener("keydown", this._onKeyDown);
   }
