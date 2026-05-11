@@ -475,16 +475,12 @@ export class DancingLineGame {
   }
 
   _initLevelAnimation() {
-    const id = this.level.id;
     const tile = this.level.tile || 1;
     const speed = this.level.tempo * this.speedMult;
     this._anim = { type: "none" };
 
-    const noAnimIds = ["beginning", "piano", "earth"];
-    if (noAnimIds.includes(id)) return;
-
-    const startX = this.level.start.x * tile;
-    const startZ = this.level.start.z * tile;
+    const fx = this.level.effects;
+    if (!fx || Object.keys(fx).length === 0) return;
 
     function meshExtent(m) {
       if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
@@ -497,214 +493,189 @@ export class DancingLineGame {
       return extents.map(ext => baseRevealDist * (0.6 + 0.8 * (ext / maxExt)));
     }
 
-    if (id === "ocean" || id === "dream-of-sky") {
-      if (id === "ocean") {
-        this.scene.fog = new THREE.Fog("#0a1a3a", 5, 35);
+    if (fx.fog) {
+      const fogColor = fx.fog.color || this.level.theme.sky;
+      this.scene.fog = new THREE.Fog(fogColor, fx.fog.near, fx.fog.far);
+    }
+
+    if (fx.playerBrightness) {
+      this.player.material.color.lerp(new THREE.Color(0xffffff), fx.playerBrightness);
+    }
+
+    if (fx.reflectivePath) {
+      const rp = fx.reflectivePath;
+      const reflectiveMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(this.level.theme.tileTop),
+        emissive: new THREE.Color(this.level.theme.tileTop),
+        emissiveIntensity: rp.emissiveIntensity || 0.4,
+        roughness: rp.roughness || 0.3,
+        metalness: rp.metalness || 0.4,
+      });
+      const reflectiveSideMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(this.level.theme.tileSide),
+        emissive: new THREE.Color(this.level.theme.tileSide),
+        emissiveIntensity: (rp.emissiveIntensity || 0.4) * 0.5,
+        roughness: (rp.roughness || 0.3) + 0.1,
+        metalness: (rp.metalness || 0.4) - 0.1,
+      });
+      const reflectiveMats = [reflectiveSideMat, reflectiveSideMat, reflectiveMat, reflectiveMat, reflectiveSideMat, reflectiveSideMat];
+      for (const m of this.tileMesh.children) {
+        m.material = reflectiveMats;
       }
-      const sameHeight = id === "dream-of-sky";
-      const meshes = this.tileMesh.children;
-      const baseRevealDist = id === "ocean" ? speed * 3.5 : speed * 3;
-      const flySpeed = id === "ocean" ? 1.0 : 2.0;
-      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
-      this._anim = {
-        type: "fly-in",
-        meshes: meshes.map((m, i) => {
-          const target = m.position.clone();
-          const randY = sameHeight ? 8 : (4 + Math.random() * 8);
-          const randX = target.x + (Math.random() - 0.5) * 20;
-          const randZ = target.z + (Math.random() - 0.5) * 20;
-          m.position.set(randX, randY, randZ);
-          m.visible = false;
-          return { mesh: m, target, origin: m.position.clone(), revealed: false, t: 0, revealDist: perItemDists[i] };
-        }),
-        revealDist: baseRevealDist,
-        speed: flySpeed,
-      };
-    } else if (id === "winter") {
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 12, 50);
+    }
+
+    if (fx.particles) {
+      const pt = fx.particles;
       const overlay = document.createElement("canvas");
       overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;";
       overlay.width = window.innerWidth;
       overlay.height = window.innerHeight;
       document.body.appendChild(overlay);
       const ctx = overlay.getContext("2d");
-      const count = 250;
-      const flakes = [];
-      for (let i = 0; i < count; i++) {
-        flakes.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, r: 3 + Math.random() * 4, vx: (Math.random() - 0.5) * 40, vy: 80 + Math.random() * 100, opacity: 0.8 + Math.random() * 0.2 });
-      }
-      this._anim = { type: "snow-2d", overlay, ctx, flakes, count };
-    } else if (id === "storm" || id === "storm-remix" || id === "abs-storm") {
-      const fogFar = id === "storm" ? 35 : 28;
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, fogFar);
-      const overlay = document.createElement("canvas");
-      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;";
-      overlay.width = window.innerWidth;
-      overlay.height = window.innerHeight;
-      document.body.appendChild(overlay);
-      const ctx = overlay.getContext("2d");
-      const isHeavy = id === "storm" || id === "abs-storm";
-      const count = isHeavy ? 300 : 150;
-      const drops = [];
-      for (let i = 0; i < count; i++) {
-        drops.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, len: 15 + Math.random() * 25, vx: (Math.random() - 0.3) * 30, vy: 700 + Math.random() * 500, opacity: 0.25 + Math.random() * 0.35 });
-      }
-      this._anim = { type: "rain-2d", overlay, ctx, drops, count };
-      if (id === "abs-storm") {
-        const reflectiveMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(this.level.theme.tileTop),
-          emissive: new THREE.Color(this.level.theme.tileTop),
-          emissiveIntensity: 0.4,
-          roughness: 0.3,
-          metalness: 0.4,
-        });
-        const reflectiveSideMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(this.level.theme.tileSide),
-          emissive: new THREE.Color(this.level.theme.tileSide),
-          emissiveIntensity: 0.2,
-          roughness: 0.4,
-          metalness: 0.3,
-        });
-        const reflectiveMats = [reflectiveSideMat, reflectiveSideMat, reflectiveMat, reflectiveMat, reflectiveSideMat, reflectiveSideMat];
-        for (const m of this.tileMesh.children) {
-          m.material = reflectiveMats;
+      const count = pt.count || 150;
+
+      if (pt.type === "snow") {
+        const flakes = [];
+        for (let i = 0; i < count; i++) {
+          flakes.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, r: 3 + Math.random() * 4, vx: (Math.random() - 0.5) * 40, vy: 80 + Math.random() * 100, opacity: 0.8 + Math.random() * 0.2 });
         }
+        this._anim = { type: "snow-2d", overlay, ctx, flakes, count };
+      } else if (pt.type === "rain") {
+        const drops = [];
+        for (let i = 0; i < count; i++) {
+          drops.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, len: 15 + Math.random() * 25, vx: (Math.random() - 0.3) * 30, vy: 700 + Math.random() * 500, opacity: 0.25 + Math.random() * 0.35 });
+        }
+        this._anim = { type: "rain-2d", overlay, ctx, drops, count };
+      } else if (pt.type === "dust") {
+        const slopes = [1/3, 1/2, 2/3];
+        const dustParts = [];
+        for (let i = 0; i < count; i++) {
+          dustParts.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, size: 3 + Math.random() * 5, slope: slopes[Math.floor(Math.random() * 3)], slopeTimer: Math.random() * 3, vx: -(180 + Math.random() * 120), opacity: 0.3 + Math.random() * 0.3 });
+        }
+        this._anim = { type: "dust-2d", overlay, ctx, dustParts, count, color: "190,190,190" };
       }
-    } else if (id === "desert" || id === "west") {
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, 30);
-    } else if (id === "crystal") {
-      const pLight = new THREE.PointLight(this.level.theme.line, 18, 40, 0.8);
+    }
+
+    if (fx.lighting && fx.lighting.type === "crystal") {
+      const lt = fx.lighting;
+      const pLight = new THREE.PointLight(this.level.theme.line, lt.pointIntensity || 18, lt.pointRange || 40, lt.pointDecay || 0.8);
       pLight.position.copy(this.player.position);
       pLight.position.y = 3;
       this.scene.add(pLight);
-      const spotLight = new THREE.SpotLight(this.level.theme.line, 14, 45, Math.PI / 3, 0.3, 0.6);
+      const spotLight = new THREE.SpotLight(this.level.theme.line, lt.spotIntensity || 14, lt.spotRange || 45, lt.spotAngle || Math.PI / 3, lt.spotPenumbra || 0.3, lt.spotDecay || 0.6);
       spotLight.position.copy(this.player.position);
       spotLight.position.y = 4;
       spotLight.target.position.set(this.player.position.x + 5, 0, this.player.position.z + 5);
       this.scene.add(spotLight);
       this.scene.add(spotLight.target);
-      const ambient2 = new THREE.AmbientLight(this.level.theme.line, 0.15);
+      const ambient2 = new THREE.AmbientLight(this.level.theme.line, lt.ambientIntensity || 0.15);
       this.scene.add(ambient2);
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 5, 24);
-      this.player.material.emissiveIntensity = 1.5;
-      this.trailMaterial.emissiveIntensity = 1.5;
+      this.player.material.emissiveIntensity = lt.playerGlow || 1.5;
+      this.trailMaterial.emissiveIntensity = lt.playerGlow || 1.5;
       const meshes = this.tileMesh.children;
-      const litTopMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.level.theme.tileTop), roughness: 0.3, metalness: 0.4 });
-      const litSideMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.level.theme.tileSide), roughness: 0.3, metalness: 0.4 });
+      const litTopMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.level.theme.tileTop), roughness: lt.tileRoughness || 0.3, metalness: lt.tileMetalness || 0.4 });
+      const litSideMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.level.theme.tileSide), roughness: lt.tileRoughness || 0.3, metalness: lt.tileMetalness || 0.4 });
       const litMats = [litSideMat, litSideMat, litTopMat, litTopMat, litSideMat, litSideMat];
-      const perCrystalDists = sizeScaledRevealDist([...meshes], 22);
+      const revealDist = lt.revealDist || 22;
+      const perCrystalDists = sizeScaledRevealDist([...meshes], revealDist);
       for (let ci = 0; ci < meshes.length; ci++) {
         meshes[ci].visible = false;
         meshes[ci].material = litMats;
         meshes[ci].userData._revealDist = perCrystalDists[ci];
       }
-      this._anim = { type: "crystal", pLight, spotLight, meshes, revealDist: 22 };
-    } else if (id === "war") {
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 6, 35);
-      const overlay = document.createElement("canvas");
-      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;";
-      overlay.width = window.innerWidth;
-      overlay.height = window.innerHeight;
-      document.body.appendChild(overlay);
-      const ctx = overlay.getContext("2d");
-      const count = 60;
-      const slopes = [1/3, 1/2, 2/3];
-      const dustParts = [];
-      for (let i = 0; i < count; i++) {
-        dustParts.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, size: 3 + Math.random() * 5, slope: slopes[Math.floor(Math.random() * 3)], slopeTimer: Math.random() * 3, vx: -(180 + Math.random() * 120), opacity: 0.3 + Math.random() * 0.3 });
-      }
-      this._anim = { type: "dust-2d", overlay, ctx, dustParts, count, color: "190,190,190" };
-    } else if (id === "legend-of-assassin") {
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, 30);
-      const overlay = document.createElement("canvas");
-      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;";
-      overlay.width = window.innerWidth;
-      overlay.height = window.innerHeight;
-      document.body.appendChild(overlay);
-      const ctx = overlay.getContext("2d");
-      const count = 100;
-      const slopes = [1/3, 1/2, 2/3];
-      const dustParts = [];
-      for (let i = 0; i < count; i++) {
-        dustParts.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, size: 4 + Math.random() * 6, slope: slopes[Math.floor(Math.random() * 3)], slopeTimer: Math.random() * 3, vx: -(200 + Math.random() * 150), opacity: 0.4 + Math.random() * 0.35 });
-      }
-      this._anim = { type: "dust-2d", overlay, ctx, dustParts, count, color: "190,190,190" };
-    } else if (id === "taurus") {
-      this.player.material.color.lerp(new THREE.Color(0xffffff), 0.35);
+      this._anim = { type: "crystal", pLight, spotLight, meshes, revealDist };
+    }
+
+    if (fx.pathAnimation) {
+      const pa = fx.pathAnimation;
       const meshes = this.tileMesh.children;
-      const baseRevealDist = speed * 1.2;
-      const cyanColor = new THREE.Color(0x00ffff);
-      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
-      this._anim = {
-        type: "taurus",
-        meshes: meshes.map((m, i) => {
-          m.visible = false;
-          return { mesh: m, revealed: false, t: 0, revealDist: perItemDists[i] };
-        }),
-        revealDist: baseRevealDist,
-        cyanColor,
-        fadeDuration: 0.6,
-      };
-    } else if (id === "spring-festival") {
-      const meshes = this.tileMesh.children;
-      const baseRevealDist = speed * 2;
-      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
-      this._anim = {
-        type: "spring-ascend",
-        meshes: meshes.map((m, i) => {
-          const target = m.position.clone();
-          const origin = target.clone();
-          origin.y -= 6 + Math.random() * 4;
-          m.visible = false;
-          return { mesh: m, target, origin, revealed: false, t: 0, revealDist: perItemDists[i] };
-        }),
-        revealDist: baseRevealDist,
-        speed: 2.5,
-      };
-    } else if (id === "chaos") {
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 6, 40);
-      const meshes = this.tileMesh.children;
-      const baseRevealDist = speed * 1.3;
-      const animTypes = ["flip", "ascend", "fly-random", "fly-set"];
-      const lastIdx = meshes.length - 1;
-      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
-      this._anim = {
-        type: "chaos",
-        meshes: meshes.map((m, i) => {
-          const target = m.position.clone();
-          const targetRot = m.rotation.clone();
-          const aType = animTypes[Math.floor(Math.random() * animTypes.length)];
-          m.visible = false;
-          let origin;
-          if (aType === "flip") {
-            origin = target.clone();
-            m.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-          } else if (aType === "ascend") {
-            origin = target.clone();
+      const baseRevealDist = speed * (pa.revealDist || 2);
+
+      if (pa.type === "fly-in") {
+        const sameHeight = !!pa.sameHeight;
+        const flySpeed = pa.speed || 1.0;
+        const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
+        this._anim = {
+          type: "fly-in",
+          meshes: meshes.map((m, i) => {
+            const target = m.position.clone();
+            const randY = sameHeight ? 8 : (4 + Math.random() * 8);
+            const randX = target.x + (Math.random() - 0.5) * 20;
+            const randZ = target.z + (Math.random() - 0.5) * 20;
+            m.position.set(randX, randY, randZ);
+            m.visible = false;
+            return { mesh: m, target, origin: m.position.clone(), revealed: false, t: 0, revealDist: perItemDists[i] };
+          }),
+          revealDist: baseRevealDist,
+          speed: flySpeed,
+        };
+      } else if (pa.type === "ascend") {
+        const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
+        this._anim = {
+          type: "spring-ascend",
+          meshes: meshes.map((m, i) => {
+            const target = m.position.clone();
+            const origin = target.clone();
             origin.y -= 6 + Math.random() * 4;
-          } else if (aType === "fly-random") {
-            origin = new THREE.Vector3(target.x + (Math.random() - 0.5) * 15, 3 + Math.random() * 8, target.z + (Math.random() - 0.5) * 15);
-          } else {
-            origin = new THREE.Vector3(target.x + (Math.random() - 0.5) * 15, target.y, target.z + (Math.random() - 0.5) * 15);
-          }
-          const itemRevealDist = (i === lastIdx) ? speed * 5 : perItemDists[i];
-          return { mesh: m, target, targetRot, origin, originRot: m.rotation.clone(), aType, revealed: false, t: 0, revealDist: itemRevealDist };
-        }),
-        revealDist: baseRevealDist,
-        speed: 2.0,
-      };
-    } else if (id === "samsara") {
-      const meshes = this.tileMesh.children;
-      const baseRevealDist = speed * 1.2;
-      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
-      this._anim = {
-        type: "samsara",
-        meshes: meshes.map((m, i) => {
-          m.visible = false;
-          return { mesh: m, revealed: false, revealDist: perItemDists[i] };
-        }),
-        revealDist: baseRevealDist,
-      };
+            m.visible = false;
+            return { mesh: m, target, origin, revealed: false, t: 0, revealDist: perItemDists[i] };
+          }),
+          revealDist: baseRevealDist,
+          speed: pa.speed || 2.5,
+        };
+      } else if (pa.type === "fade-color") {
+        const fadeColor = new THREE.Color(pa.fadeColor || "#00ffff");
+        const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
+        this._anim = {
+          type: "taurus",
+          meshes: meshes.map((m, i) => {
+            m.visible = false;
+            return { mesh: m, revealed: false, t: 0, revealDist: perItemDists[i] };
+          }),
+          revealDist: baseRevealDist,
+          cyanColor: fadeColor,
+          fadeDuration: pa.fadeDuration || 0.6,
+        };
+      } else if (pa.type === "chaos") {
+        const animTypes = ["flip", "ascend", "fly-random", "fly-set"];
+        const lastIdx = meshes.length - 1;
+        const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
+        this._anim = {
+          type: "chaos",
+          meshes: meshes.map((m, i) => {
+            const target = m.position.clone();
+            const targetRot = m.rotation.clone();
+            const aType = animTypes[Math.floor(Math.random() * animTypes.length)];
+            m.visible = false;
+            let origin;
+            if (aType === "flip") {
+              origin = target.clone();
+              m.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            } else if (aType === "ascend") {
+              origin = target.clone();
+              origin.y -= 6 + Math.random() * 4;
+            } else if (aType === "fly-random") {
+              origin = new THREE.Vector3(target.x + (Math.random() - 0.5) * 15, 3 + Math.random() * 8, target.z + (Math.random() - 0.5) * 15);
+            } else {
+              origin = new THREE.Vector3(target.x + (Math.random() - 0.5) * 15, target.y, target.z + (Math.random() - 0.5) * 15);
+            }
+            const itemRevealDist = (pa.lastEarlyReveal && i === lastIdx) ? speed * 5 : perItemDists[i];
+            return { mesh: m, target, targetRot, origin, originRot: m.rotation.clone(), aType, revealed: false, t: 0, revealDist: itemRevealDist };
+          }),
+          revealDist: baseRevealDist,
+          speed: pa.speed || 2.0,
+        };
+      } else if (pa.type === "appear") {
+        const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
+        this._anim = {
+          type: "samsara",
+          meshes: meshes.map((m, i) => {
+            m.visible = false;
+            return { mesh: m, revealed: false, revealDist: perItemDists[i] };
+          }),
+          revealDist: baseRevealDist,
+        };
+      }
     }
   }
 

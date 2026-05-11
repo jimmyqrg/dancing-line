@@ -172,6 +172,90 @@
     <label>Enable Glow</label>
     <input type="checkbox" id="enable-glow">
   </div>
+  <h3 style="margin:0.8rem 0 0.3rem;font-size:0.85rem;opacity:0.7">Effects</h3>
+  <div class="setup-row">
+    <label>Fog</label>
+    <input type="checkbox" id="fx-fog-on">
+  </div>
+  <div class="setup-row" id="fx-fog-opts" style="display:none">
+    <label>Fog Color</label>
+    <input type="color" id="fx-fog-color" value="#000000">
+  </div>
+  <div class="setup-row" id="fx-fog-near-row" style="display:none">
+    <label>Fog Near</label>
+    <input type="number" id="fx-fog-near" value="5" min="1" max="50" step="1">
+  </div>
+  <div class="setup-row" id="fx-fog-far-row" style="display:none">
+    <label>Fog Far</label>
+    <input type="number" id="fx-fog-far" value="35" min="5" max="200" step="1">
+  </div>
+  <div class="setup-row">
+    <label>Particles</label>
+    <select id="fx-particles">
+      <option value="">None</option>
+      <option value="snow">Snow</option>
+      <option value="rain">Rain</option>
+      <option value="dust">Dust</option>
+    </select>
+  </div>
+  <div class="setup-row" id="fx-particles-count-row" style="display:none">
+    <label>Count</label>
+    <input type="number" id="fx-particles-count" value="150" min="10" max="1000" step="10">
+  </div>
+  <div class="setup-row" id="fx-particles-heavy-row" style="display:none">
+    <label>Heavy</label>
+    <input type="checkbox" id="fx-particles-heavy">
+  </div>
+  <div class="setup-row">
+    <label>Path Animation</label>
+    <select id="fx-path-anim">
+      <option value="">None</option>
+      <option value="fly-in">Fly In</option>
+      <option value="ascend">Ascend</option>
+      <option value="fade-color">Fade Color</option>
+      <option value="chaos">Chaos</option>
+      <option value="appear">Appear</option>
+    </select>
+  </div>
+  <div class="setup-row" id="fx-pa-reveal-row" style="display:none">
+    <label>Reveal Dist</label>
+    <input type="number" id="fx-pa-reveal" value="2" min="0.5" max="10" step="0.1">
+  </div>
+  <div class="setup-row" id="fx-pa-speed-row" style="display:none">
+    <label>Anim Speed</label>
+    <input type="number" id="fx-pa-speed" value="2" min="0.1" max="10" step="0.1">
+  </div>
+  <div class="setup-row" id="fx-pa-sameheight-row" style="display:none">
+    <label>Same Height</label>
+    <input type="checkbox" id="fx-pa-sameheight">
+  </div>
+  <div class="setup-row" id="fx-pa-fadecolor-row" style="display:none">
+    <label>Fade Color</label>
+    <input type="color" id="fx-pa-fadecolor" value="#00ffff">
+  </div>
+  <div class="setup-row" id="fx-pa-fadedur-row" style="display:none">
+    <label>Fade Duration</label>
+    <input type="number" id="fx-pa-fadedur" value="0.6" min="0.1" max="3" step="0.1">
+  </div>
+  <div class="setup-row" id="fx-pa-lastearly-row" style="display:none">
+    <label>Last Early Reveal</label>
+    <input type="checkbox" id="fx-pa-lastearly">
+  </div>
+  <div class="setup-row">
+    <label>Lighting</label>
+    <select id="fx-lighting">
+      <option value="">None</option>
+      <option value="crystal">Crystal</option>
+    </select>
+  </div>
+  <div class="setup-row">
+    <label>Reflective Path</label>
+    <input type="checkbox" id="fx-reflective">
+  </div>
+  <div class="setup-row">
+    <label>Player Brightness</label>
+    <input type="number" id="fx-brightness" value="0" min="0" max="1" step="0.05">
+  </div>
   <div class="setup-row">
     <label>Music</label>
     <select id="music-select">
@@ -246,6 +330,46 @@ const jsonOut = document.getElementById("json-out");
 const copyBtn = document.getElementById("copy-btn");
 const restartBtn = document.getElementById("restart-btn");
 
+const fxFogOn = document.getElementById("fx-fog-on");
+const fxFogColor = document.getElementById("fx-fog-color");
+const fxFogNear = document.getElementById("fx-fog-near");
+const fxFogFar = document.getElementById("fx-fog-far");
+const fxParticles = document.getElementById("fx-particles");
+const fxParticlesCount = document.getElementById("fx-particles-count");
+const fxParticlesHeavy = document.getElementById("fx-particles-heavy");
+const fxPathAnim = document.getElementById("fx-path-anim");
+const fxPaReveal = document.getElementById("fx-pa-reveal");
+const fxPaSpeed = document.getElementById("fx-pa-speed");
+const fxPaSameHeight = document.getElementById("fx-pa-sameheight");
+const fxPaFadeColor = document.getElementById("fx-pa-fadecolor");
+const fxPaFadeDur = document.getElementById("fx-pa-fadedur");
+const fxPaLastEarly = document.getElementById("fx-pa-lastearly");
+const fxLighting = document.getElementById("fx-lighting");
+const fxReflective = document.getElementById("fx-reflective");
+const fxBrightness = document.getElementById("fx-brightness");
+
+fxFogOn.addEventListener("change", () => {
+  const show = fxFogOn.checked ? "" : "none";
+  document.getElementById("fx-fog-opts").style.display = show;
+  document.getElementById("fx-fog-near-row").style.display = show;
+  document.getElementById("fx-fog-far-row").style.display = show;
+});
+fxParticles.addEventListener("change", () => {
+  const on = fxParticles.value !== "";
+  document.getElementById("fx-particles-count-row").style.display = on ? "" : "none";
+  document.getElementById("fx-particles-heavy-row").style.display = fxParticles.value === "rain" ? "" : "none";
+});
+fxPathAnim.addEventListener("change", () => {
+  const v = fxPathAnim.value;
+  const on = v !== "";
+  document.getElementById("fx-pa-reveal-row").style.display = on ? "" : "none";
+  document.getElementById("fx-pa-speed-row").style.display = (v === "fly-in" || v === "ascend" || v === "chaos") ? "" : "none";
+  document.getElementById("fx-pa-sameheight-row").style.display = v === "fly-in" ? "" : "none";
+  document.getElementById("fx-pa-fadecolor-row").style.display = v === "fade-color" ? "" : "none";
+  document.getElementById("fx-pa-fadedur-row").style.display = v === "fade-color" ? "" : "none";
+  document.getElementById("fx-pa-lastearly-row").style.display = v === "chaos" ? "" : "none";
+});
+
 // Width: 1=1x, 9=5x exponential
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
@@ -256,7 +380,19 @@ function saveSettings() {
       bg: colBg.value, path: colPath.value, line: colLine.value,
       startLength: startLengthEl.value, startWidth: startWidthEl.value,
       speed: playerSpeedEl.value, glow: enableGlowEl.checked,
-      music: musicSelect.value === "__upload__" ? "" : musicSelect.value
+      music: musicSelect.value === "__upload__" ? "" : musicSelect.value,
+      fx: {
+        fogOn: fxFogOn.checked, fogColor: fxFogColor.value,
+        fogNear: fxFogNear.value, fogFar: fxFogFar.value,
+        particles: fxParticles.value, particlesCount: fxParticlesCount.value,
+        particlesHeavy: fxParticlesHeavy.checked,
+        pathAnim: fxPathAnim.value, paReveal: fxPaReveal.value,
+        paSpeed: fxPaSpeed.value, paSameHeight: fxPaSameHeight.checked,
+        paFadeColor: fxPaFadeColor.value, paFadeDur: fxPaFadeDur.value,
+        paLastEarly: fxPaLastEarly.checked,
+        lighting: fxLighting.value, reflective: fxReflective.checked,
+        brightness: fxBrightness.value
+      }
     }));
   } catch (_) {}
 }
@@ -272,6 +408,29 @@ function loadSettings() {
     if (d.speed) playerSpeedEl.value = d.speed;
     if (d.glow != null) enableGlowEl.checked = d.glow;
     if (d.music) musicSelect.value = d.music;
+    if (d.fx) {
+      const f = d.fx;
+      if (f.fogOn != null) fxFogOn.checked = f.fogOn;
+      if (f.fogColor) fxFogColor.value = f.fogColor;
+      if (f.fogNear) fxFogNear.value = f.fogNear;
+      if (f.fogFar) fxFogFar.value = f.fogFar;
+      if (f.particles) fxParticles.value = f.particles;
+      if (f.particlesCount) fxParticlesCount.value = f.particlesCount;
+      if (f.particlesHeavy != null) fxParticlesHeavy.checked = f.particlesHeavy;
+      if (f.pathAnim) fxPathAnim.value = f.pathAnim;
+      if (f.paReveal) fxPaReveal.value = f.paReveal;
+      if (f.paSpeed) fxPaSpeed.value = f.paSpeed;
+      if (f.paSameHeight != null) fxPaSameHeight.checked = f.paSameHeight;
+      if (f.paFadeColor) fxPaFadeColor.value = f.paFadeColor;
+      if (f.paFadeDur) fxPaFadeDur.value = f.paFadeDur;
+      if (f.paLastEarly != null) fxPaLastEarly.checked = f.paLastEarly;
+      if (f.lighting) fxLighting.value = f.lighting;
+      if (f.reflective != null) fxReflective.checked = f.reflective;
+      if (f.brightness) fxBrightness.value = f.brightness;
+      fxFogOn.dispatchEvent(new Event("change"));
+      fxParticles.dispatchEvent(new Event("change"));
+      fxPathAnim.dispatchEvent(new Event("change"));
+    }
   } catch (_) {}
 }
 loadSettings();
@@ -611,6 +770,39 @@ function finish() {
   outputEl.classList.add("active");
 }
 
+function buildEffects() {
+  const fx = {};
+  if (fxFogOn.checked) {
+    fx.fog = { color: fxFogColor.value, near: parseFloat(fxFogNear.value), far: parseFloat(fxFogFar.value) };
+  }
+  if (fxParticles.value) {
+    fx.particles = { type: fxParticles.value, count: parseInt(fxParticlesCount.value) };
+    if (fxParticles.value === "rain") fx.particles.heavy = fxParticlesHeavy.checked;
+  }
+  if (fxPathAnim.value) {
+    const pa = { type: fxPathAnim.value, revealDist: parseFloat(fxPaReveal.value) };
+    if (fxPathAnim.value === "fly-in" || fxPathAnim.value === "ascend" || fxPathAnim.value === "chaos") {
+      pa.speed = parseFloat(fxPaSpeed.value);
+    }
+    if (fxPathAnim.value === "fly-in") pa.sameHeight = fxPaSameHeight.checked;
+    if (fxPathAnim.value === "fade-color") {
+      pa.fadeColor = fxPaFadeColor.value;
+      pa.fadeDuration = parseFloat(fxPaFadeDur.value);
+    }
+    if (fxPathAnim.value === "chaos") pa.lastEarlyReveal = fxPaLastEarly.checked;
+    fx.pathAnimation = pa;
+  }
+  if (fxLighting.value) {
+    fx.lighting = { type: fxLighting.value };
+  }
+  if (fxReflective.checked) {
+    fx.reflectivePath = { emissiveIntensity: 0.4, roughness: 0.3, metalness: 0.4 };
+  }
+  const brightness = parseFloat(fxBrightness.value);
+  if (brightness > 0) fx.playerBrightness = brightness;
+  return fx;
+}
+
 function buildJSON() {
   const segs = segments.map(s => ({ axis: s.axis, length: Math.round(s.length * 10) / 10, width: s.width }));
   const result = {
@@ -619,6 +811,7 @@ function buildJSON() {
     tempo: speed,
     trailWidth: 0.32,
     glow: enableGlowEl.checked,
+    effects: buildEffects(),
     theme: {
       sky: bgColor, ground: bgColor,
       tileTop: pathColor, tileSide: darken(pathColor, 0.4),

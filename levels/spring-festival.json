@@ -1673,5 +1673,12 @@
   "decor": [],
   "totalSegments": 329,
   "totalTiles": 873.5999999999999,
-  "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/spring-festival.mp3"
+  "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/spring-festival.mp3",
+  "effects": {
+    "pathAnimation": {
+      "type": "ascend",
+      "revealDist": 2,
+      "speed": 2.5
+    }
+  }
 }

@@ -1339,5 +1339,16 @@
   "decor": [],
   "totalSegments": 262,
   "totalTiles": 779.1999999999998,
-  "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/storm.mp3"
+  "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/storm.mp3",
+  "effects": {
+    "fog": {
+      "near": 4,
+      "far": 35
+    },
+    "particles": {
+      "type": "rain",
+      "count": 300,
+      "heavy": true
+    }
+  }
 }
