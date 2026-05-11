@@ -158,6 +158,39 @@
         box-shadow: 0 0 18px var(--glow);
       }
 
+      .boot__loading {
+        position: absolute;
+        bottom: 18vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+        transition: opacity 0.4s;
+      }
+      .boot__loading--hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .boot__loading-track {
+        width: clamp(10rem, 40vw, 20rem);
+        height: 4px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .boot__loading-fill {
+        width: 0%;
+        height: 100%;
+        background: var(--ink-soft);
+        border-radius: 2px;
+        transition: width 0.3s ease;
+      }
+      .boot__loading-text {
+        font-size: 0.75rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        opacity: 0.6;
+      }
       .boot__prompt {
         position: absolute;
         bottom: 18vh;
@@ -166,6 +199,11 @@
         text-transform: uppercase;
         color: var(--ink-soft);
         animation: pulse 1.6s ease-in-out infinite;
+        transition: opacity 0.4s;
+      }
+      .boot__prompt--hidden {
+        opacity: 0;
+        pointer-events: none;
       }
 
       .boot__credit {
@@ -980,7 +1018,13 @@
           <h1 class="boot__title" data-i18n="title">Dancing Line</h1>
           <span class="boot__rule" aria-hidden="true"></span>
         </div>
-        <p class="boot__prompt" data-i18n="tapToStart">Tap to start</p>
+        <div class="boot__loading" data-loading-bar>
+          <div class="boot__loading-track">
+            <div class="boot__loading-fill" data-loading-fill></div>
+          </div>
+          <p class="boot__loading-text" data-loading-text>Loading...</p>
+        </div>
+        <p class="boot__prompt boot__prompt--hidden" data-i18n="tapToStart">Tap to start</p>
         <p class="boot__credit" data-i18n="credit">Game by Cheetah Mobile, ported by JimmyQrg</p>
       </section>
 
@@ -1390,27 +1434,65 @@
         }
       };
 
+      const loadingFill = document.querySelector("[data-loading-fill]");
+      const loadingText = document.querySelector("[data-loading-text]");
+      const loadingBar = document.querySelector("[data-loading-bar]");
+      const bootPrompt = document.querySelector(".boot__prompt");
+
+      let loadedCount = 0;
+      let totalAssets = 0;
+      function updateLoadingProgress() {
+        const pct = totalAssets > 0 ? Math.round((loadedCount / totalAssets) * 100) : 0;
+        loadingFill.style.width = pct + "%";
+        loadingText.textContent = `${pct}%`;
+      }
+
       let LEVEL_DATA = { levels: {} };
       const levelFiles = ["beginning", "piano", "ocean", "winter", "storm-remix", "dream-of-sky", "desert", "west", "earth", "storm", "crystal", "war", "taurus", "spring-festival", "chaos", "legend-of-assassin", "abs-storm", "samsara"];
+      totalAssets = levelFiles.length;
+      updateLoadingProgress();
+
       await Promise.all(levelFiles.map(async (id) => {
         try {
           const res = await fetch(`./levels/${id}.json`, { cache: "no-store" });
           if (res.ok) LEVEL_DATA.levels[id] = await res.json();
         } catch (_) {}
+        loadedCount++;
+        updateLoadingProgress();
       }));
 
       // Preload all audio (music + SFX) so playback is instant
       const preloadedAudio = {};
+      const audioUrls = [];
       Object.entries(audioAssets).forEach(([name, url]) => {
         const a = new Audio(); a.preload = "auto"; a.src = url;
         preloadedAudio[name] = a;
+        audioUrls.push(a);
       });
       Object.values(LEVEL_DATA.levels).forEach((lvl) => {
         if (lvl.audio) {
           const a = new Audio(); a.preload = "auto"; a.src = lvl.audio;
           preloadedAudio[lvl.audio] = a;
+          audioUrls.push(a);
         }
       });
+
+      totalAssets = levelFiles.length + audioUrls.length;
+      updateLoadingProgress();
+
+      await Promise.all(audioUrls.map(a => new Promise((resolve) => {
+        let done = false;
+        function finish() { if (done) return; done = true; loadedCount++; updateLoadingProgress(); resolve(); }
+        if (a.readyState >= 3) { finish(); return; }
+        a.addEventListener("canplaythrough", finish, { once: true });
+        a.addEventListener("error", finish, { once: true });
+        setTimeout(finish, 8000);
+      })));
+
+      // Loading complete — show tap to start
+      loadingBar.classList.add("boot__loading--hidden");
+      bootPrompt.classList.remove("boot__prompt--hidden");
+      window.__bootReady = true;
 
       // ─────────────────────────────────────────────────────────────
       // Menu canvas (2D ambient)
@@ -1771,12 +1853,12 @@
         setMode(name);
       }
 
-      // Boot → select
+      // Boot → select (only after loading completes)
       screens.boot.addEventListener("click", () => {
-        showScreen("select");
+        if (window.__bootReady) showScreen("select");
       });
       screens.boot.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if ((e.key === "Enter" || e.key === " ") && window.__bootReady) {
           e.preventDefault();
           showScreen("select");
         }
@@ -2125,6 +2207,7 @@
           levelComplete: "Level complete",
           best: "Best",
           pasteJson: "Paste level JSON here...",
+          loading: "Loading...",
         },
         zh: {
           title: "跳舞的线",
@@ -2147,6 +2230,7 @@
           levelComplete: "关卡完成",
           best: "最佳",
           pasteJson: "在此粘贴关卡JSON...",
+          loading: "加载中...",
         },
       };
 

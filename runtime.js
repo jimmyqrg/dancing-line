@@ -463,11 +463,22 @@ export class DancingLineGame {
     const speed = this.level.tempo * this.speedMult;
     this._anim = { type: "none" };
 
-    const noAnimIds = ["beginning", "piano", "earth", "spring-festival"];
+    const noAnimIds = ["beginning", "piano", "earth"];
     if (noAnimIds.includes(id)) return;
 
     const startX = this.level.start.x * tile;
     const startZ = this.level.start.z * tile;
+
+    function meshExtent(m) {
+      if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+      const bb = m.geometry.boundingBox;
+      return Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z);
+    }
+    function sizeScaledRevealDist(meshes, baseRevealDist) {
+      const extents = meshes.map(m => meshExtent(m));
+      const maxExt = Math.max(...extents, 1);
+      return extents.map(ext => baseRevealDist * (0.6 + 0.8 * (ext / maxExt)));
+    }
 
     if (id === "ocean" || id === "dream-of-sky") {
       if (id === "ocean") {
@@ -475,8 +486,9 @@ export class DancingLineGame {
       }
       const sameHeight = id === "dream-of-sky";
       const meshes = this.tileMesh.children;
-      const revealDist = id === "ocean" ? speed * 5 : speed * 3;
+      const baseRevealDist = id === "ocean" ? speed * 3.5 : speed * 3;
       const flySpeed = id === "ocean" ? 1.0 : 2.0;
+      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
       this._anim = {
         type: "fly-in",
         meshes: meshes.map((m, i) => {
@@ -486,15 +498,15 @@ export class DancingLineGame {
           const randZ = target.z + (Math.random() - 0.5) * 20;
           m.position.set(randX, randY, randZ);
           m.visible = false;
-          return { mesh: m, target, origin: m.position.clone(), revealed: false, t: 0 };
+          return { mesh: m, target, origin: m.position.clone(), revealed: false, t: 0, revealDist: perItemDists[i] };
         }),
-        revealDist,
+        revealDist: baseRevealDist,
         speed: flySpeed,
       };
     } else if (id === "winter") {
       this.scene.fog = new THREE.Fog(this.level.theme.sky, 12, 50);
       const overlay = document.createElement("canvas");
-      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;";
+      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;";
       overlay.width = window.innerWidth;
       overlay.height = window.innerHeight;
       document.body.appendChild(overlay);
@@ -502,13 +514,14 @@ export class DancingLineGame {
       const count = 250;
       const flakes = [];
       for (let i = 0; i < count; i++) {
-        flakes.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, r: 3 + Math.random() * 4, vx: (Math.random() - 0.5) * 25, vy: 35 + Math.random() * 50, opacity: 0.8 + Math.random() * 0.2 });
+        flakes.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, r: 3 + Math.random() * 4, vx: (Math.random() - 0.5) * 40, vy: 80 + Math.random() * 100, opacity: 0.8 + Math.random() * 0.2 });
       }
       this._anim = { type: "snow-2d", overlay, ctx, flakes, count };
     } else if (id === "storm" || id === "storm-remix" || id === "abs-storm") {
-      this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, 28);
+      const fogFar = id === "storm" ? 35 : 28;
+      this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, fogFar);
       const overlay = document.createElement("canvas");
-      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;";
+      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;";
       overlay.width = window.innerWidth;
       overlay.height = window.innerHeight;
       document.body.appendChild(overlay);
@@ -523,14 +536,17 @@ export class DancingLineGame {
       if (id === "abs-storm") {
         const reflectiveMat = new THREE.MeshStandardMaterial({
           color: new THREE.Color(this.level.theme.tileTop),
-          roughness: 0.05,
-          metalness: 0.95,
-          envMapIntensity: 1.5,
+          emissive: new THREE.Color(this.level.theme.tileTop),
+          emissiveIntensity: 0.4,
+          roughness: 0.3,
+          metalness: 0.4,
         });
         const reflectiveSideMat = new THREE.MeshStandardMaterial({
           color: new THREE.Color(this.level.theme.tileSide),
-          roughness: 0.1,
-          metalness: 0.8,
+          emissive: new THREE.Color(this.level.theme.tileSide),
+          emissiveIntensity: 0.2,
+          roughness: 0.4,
+          metalness: 0.3,
         });
         const reflectiveMats = [reflectiveSideMat, reflectiveSideMat, reflectiveMat, reflectiveMat, reflectiveSideMat, reflectiveSideMat];
         for (const m of this.tileMesh.children) {
@@ -540,11 +556,11 @@ export class DancingLineGame {
     } else if (id === "desert" || id === "west") {
       this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, 30);
     } else if (id === "crystal") {
-      const pLight = new THREE.PointLight(this.level.theme.line, 10, 30, 1);
+      const pLight = new THREE.PointLight(this.level.theme.line, 18, 40, 0.8);
       pLight.position.copy(this.player.position);
       pLight.position.y = 3;
       this.scene.add(pLight);
-      const spotLight = new THREE.SpotLight(this.level.theme.line, 8, 35, Math.PI / 4, 0.3, 0.8);
+      const spotLight = new THREE.SpotLight(this.level.theme.line, 14, 45, Math.PI / 3, 0.3, 0.6);
       spotLight.position.copy(this.player.position);
       spotLight.position.y = 4;
       spotLight.target.position.set(this.player.position.x + 5, 0, this.player.position.z + 5);
@@ -559,15 +575,17 @@ export class DancingLineGame {
       const litTopMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.level.theme.tileTop), roughness: 0.3, metalness: 0.4 });
       const litSideMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.level.theme.tileSide), roughness: 0.3, metalness: 0.4 });
       const litMats = [litSideMat, litSideMat, litTopMat, litTopMat, litSideMat, litSideMat];
-      for (const m of meshes) {
-        m.visible = false;
-        m.material = litMats;
+      const perCrystalDists = sizeScaledRevealDist([...meshes], 22);
+      for (let ci = 0; ci < meshes.length; ci++) {
+        meshes[ci].visible = false;
+        meshes[ci].material = litMats;
+        meshes[ci].userData._revealDist = perCrystalDists[ci];
       }
       this._anim = { type: "crystal", pLight, spotLight, meshes, revealDist: 22 };
     } else if (id === "war") {
       this.scene.fog = new THREE.Fog(this.level.theme.sky, 6, 35);
       const overlay = document.createElement("canvas");
-      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;";
+      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;";
       overlay.width = window.innerWidth;
       overlay.height = window.innerHeight;
       document.body.appendChild(overlay);
@@ -582,7 +600,7 @@ export class DancingLineGame {
     } else if (id === "legend-of-assassin") {
       this.scene.fog = new THREE.Fog(this.level.theme.sky, 4, 30);
       const overlay = document.createElement("canvas");
-      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;";
+      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;";
       overlay.width = window.innerWidth;
       overlay.height = window.innerHeight;
       document.body.appendChild(overlay);
@@ -597,26 +615,45 @@ export class DancingLineGame {
     } else if (id === "taurus") {
       this.player.material.color.lerp(new THREE.Color(0xffffff), 0.35);
       const meshes = this.tileMesh.children;
-      const revealDist = speed * 1.2;
+      const baseRevealDist = speed * 1.2;
       const cyanColor = new THREE.Color(0x00ffff);
+      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
       this._anim = {
         type: "taurus",
-        meshes: meshes.map(m => {
+        meshes: meshes.map((m, i) => {
           m.visible = false;
-          return { mesh: m, revealed: false, t: 0 };
+          return { mesh: m, revealed: false, t: 0, revealDist: perItemDists[i] };
         }),
-        revealDist,
+        revealDist: baseRevealDist,
         cyanColor,
         fadeDuration: 0.6,
+      };
+    } else if (id === "spring-festival") {
+      const meshes = this.tileMesh.children;
+      const baseRevealDist = speed * 2;
+      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
+      this._anim = {
+        type: "spring-ascend",
+        meshes: meshes.map((m, i) => {
+          const target = m.position.clone();
+          const origin = target.clone();
+          origin.y -= 6 + Math.random() * 4;
+          m.visible = false;
+          return { mesh: m, target, origin, revealed: false, t: 0, revealDist: perItemDists[i] };
+        }),
+        revealDist: baseRevealDist,
+        speed: 2.5,
       };
     } else if (id === "chaos") {
       this.scene.fog = new THREE.Fog(this.level.theme.sky, 6, 40);
       const meshes = this.tileMesh.children;
-      const revealDist = speed * 1.3;
+      const baseRevealDist = speed * 1.3;
       const animTypes = ["flip", "ascend", "fly-random", "fly-set"];
+      const lastIdx = meshes.length - 1;
+      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
       this._anim = {
         type: "chaos",
-        meshes: meshes.map(m => {
+        meshes: meshes.map((m, i) => {
           const target = m.position.clone();
           const targetRot = m.rotation.clone();
           const aType = animTypes[Math.floor(Math.random() * animTypes.length)];
@@ -633,21 +670,23 @@ export class DancingLineGame {
           } else {
             origin = new THREE.Vector3(target.x + (Math.random() - 0.5) * 15, target.y, target.z + (Math.random() - 0.5) * 15);
           }
-          return { mesh: m, target, targetRot, origin, originRot: m.rotation.clone(), aType, revealed: false, t: 0 };
+          const itemRevealDist = (i === lastIdx) ? speed * 5 : perItemDists[i];
+          return { mesh: m, target, targetRot, origin, originRot: m.rotation.clone(), aType, revealed: false, t: 0, revealDist: itemRevealDist };
         }),
-        revealDist,
+        revealDist: baseRevealDist,
         speed: 2.0,
       };
     } else if (id === "samsara") {
       const meshes = this.tileMesh.children;
-      const revealDist = speed * 2;
+      const baseRevealDist = speed * 1.2;
+      const perItemDists = sizeScaledRevealDist([...meshes], baseRevealDist);
       this._anim = {
         type: "samsara",
-        meshes: meshes.map(m => {
+        meshes: meshes.map((m, i) => {
           m.visible = false;
-          return { mesh: m, revealed: false };
+          return { mesh: m, revealed: false, revealDist: perItemDists[i] };
         }),
-        revealDist,
+        revealDist: baseRevealDist,
       };
     }
   }
@@ -664,7 +703,7 @@ export class DancingLineGame {
           const dx = item.target.x - px;
           const dz = item.target.z - pz;
           const dist = Math.sqrt(dx * dx + dz * dz);
-          if (dist < a.revealDist) {
+          if (dist < (item.revealDist || a.revealDist)) {
             item.revealed = true;
             item.mesh.visible = true;
             item.mesh.position.copy(item.origin);
@@ -724,7 +763,7 @@ export class DancingLineGame {
         const dx = m.position.x - px;
         const dz = m.position.z - pz;
         const dist = Math.sqrt(dx * dx + dz * dz);
-        m.visible = dist < a.revealDist;
+        m.visible = dist < (m.userData._revealDist || a.revealDist);
       }
     } else if (this._anim.type === "dust-2d") {
       const a = this._anim;
@@ -738,7 +777,7 @@ export class DancingLineGame {
           p.slope = slopes[Math.floor(Math.random() * 3)];
           p.slopeTimer = 1.5 + Math.random() * 2;
         }
-        p.y += p.vx * p.slope * dt;
+        p.y += Math.abs(p.vx) * p.slope * dt;
         if (p.x < -20) { p.x = w + 10; p.y = Math.random() * h; }
         if (p.y < -20) p.y = h + 10;
         if (p.y > h + 20) p.y = -10;
@@ -761,7 +800,7 @@ export class DancingLineGame {
           const dx = item.mesh.position.x - px;
           const dz = item.mesh.position.z - pz;
           const dist = Math.sqrt(dx * dx + dz * dz);
-          if (dist < a.revealDist) {
+          if (dist < (item.revealDist || a.revealDist)) {
             item.revealed = true;
             item.mesh.visible = true;
             const origMats = Array.isArray(item.mesh.material) ? item.mesh.material : [item.mesh.material];
@@ -789,6 +828,25 @@ export class DancingLineGame {
           }
         }
       }
+    } else if (this._anim.type === "spring-ascend") {
+      const a = this._anim;
+      for (const item of a.meshes) {
+        if (!item.revealed) {
+          const dx = item.target.x - px;
+          const dz = item.target.z - pz;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < (item.revealDist || a.revealDist)) {
+            item.revealed = true;
+            item.mesh.visible = true;
+            item.mesh.position.copy(item.origin);
+          }
+        }
+        if (item.revealed && item.t < 1) {
+          item.t = Math.min(1, item.t + dt * a.speed);
+          const e = 1 - Math.pow(1 - item.t, 3);
+          item.mesh.position.lerpVectors(item.origin, item.target, e);
+        }
+      }
     } else if (this._anim.type === "chaos") {
       const a = this._anim;
       for (const item of a.meshes) {
@@ -796,7 +854,7 @@ export class DancingLineGame {
           const dx = item.target.x - px;
           const dz = item.target.z - pz;
           const dist = Math.sqrt(dx * dx + dz * dz);
-          if (dist < a.revealDist) {
+          if (dist < (item.revealDist || a.revealDist)) {
             item.revealed = true;
             item.mesh.visible = true;
             item.mesh.position.copy(item.origin);
@@ -821,7 +879,7 @@ export class DancingLineGame {
           const dx = item.mesh.position.x - px;
           const dz = item.mesh.position.z - pz;
           const dist = Math.sqrt(dx * dx + dz * dz);
-          if (dist < a.revealDist) {
+          if (dist < (item.revealDist || a.revealDist)) {
             item.revealed = true;
             item.mesh.visible = true;
           }
@@ -880,17 +938,18 @@ export class DancingLineGame {
     const tempo = (this.level.tempo || 6) * this.speedMult;
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
     const baseDelay = 0.476 / tempo;
-    const delay = firstLen / tempo + baseDelay + (this.level.audioDelay || 0);
+    this._musicDelay = firstLen / tempo + baseDelay + (this.level.audioDelay || 0);
     setTimeout(() => {
       this.music.setRate(this.speedMult);
       this.music.play();
-    }, delay * 1000);
+    }, this._musicDelay * 1000);
     this.onEvent({ type: "start" });
   }
 
   pause() {
     if (this.state === "playing") {
       this.state = "paused";
+      this._pausedPlayingTime = this._playingTime;
       this.music.pause();
       this.onEvent({ type: "pause" });
     }
@@ -900,6 +959,12 @@ export class DancingLineGame {
     if (this.state === "paused") {
       this.state = "playing";
       this._lastTs = 0;
+      const musicTime = this.music._audio ? this.music._audio.currentTime : 0;
+      if (musicTime > 0) {
+        this._playingTime = (this._musicDelay || 0) + musicTime / (this.speedMult || 1);
+      } else {
+        this._playingTime = this._pausedPlayingTime || this._playingTime;
+      }
       this.music.resume();
       this.onEvent({ type: "resume" });
     }
@@ -1163,6 +1228,13 @@ export class DancingLineGame {
     } else if (a.type === "taurus") {
       for (const item of a.meshes) {
         if (item.origMats) item.mesh.material = item.origMats;
+        item.mesh.visible = false;
+        item.revealed = false;
+        item.t = 0;
+      }
+    } else if (a.type === "spring-ascend") {
+      for (const item of a.meshes) {
+        item.mesh.position.copy(item.target);
         item.mesh.visible = false;
         item.revealed = false;
         item.t = 0;
