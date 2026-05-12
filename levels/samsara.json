@@ -3557,7 +3557,7 @@
     "effects": {
         "pathAnimation": {
             "type": "appear",
-            "revealDist": 1.2
+            "revealDist": 0.5
         }
     }
 }
