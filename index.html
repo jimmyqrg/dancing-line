@@ -260,7 +260,44 @@
       }
 
       .select__hero {
+        position: relative;
         text-align: center;
+      }
+
+      .select__hero::before {
+        content: "";
+        position: absolute;
+        inset: 50% auto auto 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.03) 65%, transparent 100%);
+        pointer-events: none;
+        transform: translate(-50%, -50%) scale(0.6);
+        opacity: 0;
+        transition: opacity 220ms ease, transform 220ms ease;
+      }
+
+      .select__hero.is-warm::before {
+        width: 14rem;
+        height: 14rem;
+        opacity: 1;
+        animation: selectWarmPulse 720ms ease-out;
+      }
+
+      @keyframes selectWarmPulse {
+        0% {
+          transform: translate(-50%, -50%) scale(0.8);
+          opacity: 0.65;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.15);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(1.6);
+          opacity: 0;
+        }
       }
 
       .select__num {
@@ -1484,12 +1521,12 @@
           id: "judgement",
           name: "The Judgement",
           seed: 103,
-          bg: ["#1f1f26", "#54546a", "#d3d3e4"],
+          bg: ["#2d0000", "#660000", "#a80000"],
           line: "#ffffff",
-          glow: "rgba(255, 255, 255, 0.65)",
-          tileTop: "rgba(230, 230, 255, 0.2)",
-          tileSide1: "rgba(30, 30, 40, 0.5)",
-          tileSide2: "rgba(30, 30, 40, 0.3)",
+          glow: "rgba(255, 110, 110, 0.75)",
+          tileTop: "rgba(255, 180, 180, 0.18)",
+          tileSide1: "rgba(80, 0, 0, 0.5)",
+          tileSide2: "rgba(120, 0, 0, 0.3)",
         },
       ];
 
@@ -1552,7 +1589,7 @@
 
       await Promise.all(levelFiles.map(async (id) => {
         try {
-          const res = await fetch(`./levels/${id}.json`, { cache: "no-store" });
+          const res = await fetch(`./levels/${id}.json`);
           if (res.ok) LEVEL_DATA.levels[id] = await res.json();
         } catch (_) {}
         loadedCount++;
@@ -1968,6 +2005,7 @@
       const nameEl = document.querySelector("[data-name]");
       const bestEl = document.querySelector("[data-best]");
       const dotsEl = document.querySelector("[data-dots]");
+      const selectHero = document.querySelector(".select__hero");
       const gameTitleEl = document.querySelector("[data-game-title]");
       const gemsEl = document.querySelector("[data-gems]");
       const progressEl = document.querySelector("[data-progress]");
@@ -1994,6 +2032,26 @@
         }
       }
 
+      function warmLevelAudio(level) {
+        if (!level || !level.audio) return;
+        const url = level.audio;
+        let audio = preloadedAudio[url];
+        if (!audio) {
+          audio = new Audio();
+          audio.preload = "auto";
+          audio.src = url;
+          preloadedAudio[url] = audio;
+        }
+        if (audio.readyState < 3) {
+          audio.load();
+        }
+        if (selectHero) {
+          selectHero.classList.add("is-warm");
+          clearTimeout(selectHero._warmTimeout);
+          selectHero._warmTimeout = setTimeout(() => selectHero.classList.remove("is-warm"), 720);
+        }
+      }
+
       function goTo(idx, dir = 1) {
         const next = ((idx % LEVELS.length) + LEVELS.length) % LEVELS.length;
         if (next === currentIdx) return;
@@ -2012,6 +2070,7 @@
           d.classList.toggle("is-active", i === currentIdx);
         });
         loadLevel(lvl);
+        warmLevelAudio(lvl);
       }
 
       document.querySelector("[data-prev]").addEventListener("click", () =>
