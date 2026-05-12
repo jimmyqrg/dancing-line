@@ -733,7 +733,8 @@ function onTap(e) {
 
 function onKey(e) {
   if (!running) return;
-  if (e.code === "Space") { e.preventDefault(); turn(); }
+  if (e.code.startsWith("Key") || e.code === "Space" || e.type === "touchstart") { e.preventDefault(); turn(); }
+
   else if (e.key >= "0" && e.key <= "9") {
     currentWidth = parseInt(e.key);
     widthDisplay.textContent = "Width: " + currentWidth + " (" + widthScale(currentWidth).toFixed(1) + "x)";
