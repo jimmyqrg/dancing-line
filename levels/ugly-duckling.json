@@ -1,0 +1,940 @@
+{
+  "name": "Custom Level",
+  "tile": 1,
+  "tempo": 6,
+  "trailWidth": 0.32,
+  "glow": false,
+  "effects": {
+    "fog": {
+      "color": "#ffffff",
+      "near": 7,
+      "far": 35
+    },
+    "particles": {
+      "type": "rain",
+      "count": 150,
+      "heavy": false
+    },
+    "pathAnimation": {
+      "type": "fly-in",
+      "revealDist": 1,
+      "speed": 1,
+      "sameHeight": true
+    }
+  },
+  "theme": {
+    "sky": "#c2f8ff",
+    "ground": "#c2f8ff",
+    "tileTop": "#ffffff",
+    "tileSide": "#999999",
+    "line": "#b8b8b8",
+    "glow": "#b8b8b8",
+    "fogNear": 16,
+    "fogFar": 90,
+    "ambient": "#617c80",
+    "key": "#b8b8b8",
+    "decor": "#b3b3b3"
+  },
+  "start": {
+    "x": 0,
+    "z": 0,
+    "dir": "x"
+  },
+  "segments": [
+    {
+      "axis": "x",
+      "length": 8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.4,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.3,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.6,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 7.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.6,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.5,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 5.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 9.5,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 11.5,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 7.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 11.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.5,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.6,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.5,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.4,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.4,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 7.5,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.5,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.5,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 5.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 7.4,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.5,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 11.4,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.4,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.4,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.5,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 14.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.5,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4.5,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 7.3,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 8.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 5.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.6,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.5,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 8.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.6,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 7.6,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.5,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4.6,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.4,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 7.3,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.3,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 13,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 11.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 6.2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.7,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4.2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.5,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 8.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 17.8,
+      "width": 4
+    }
+  ],
+  "gems": [],
+  "decor": [],
+  "totalSegments": 178,
+  "totalTiles": 705.1999999999997,
+  "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/ugly-duckling.mp3"
+}
