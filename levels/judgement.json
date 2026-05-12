@@ -1,5 +1,5 @@
 {
-  "name": "Custom Level",
+  "name": "The Judgement",
   "tile": 1,
   "tempo": 16,
   "trailWidth": 0.32,
@@ -11,8 +11,8 @@
     },
     "pathAnimation": {
       "type": "chaos",
-      "revealDist": 1,
-      "speed": 3,
+      "revealDist": 0.4,
+      "speed": 4,
       "lastEarlyReveal": false
     }
   },
