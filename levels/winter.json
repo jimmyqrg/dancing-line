@@ -2,7 +2,7 @@
     "name": "The Winter",
     "tile": 1,
     "tempo": 7,
-    "audioDelay": -0.13,
+    "audioDelay": -0.10,
     "trailWidth": 0.32,
     "theme": {
         "sky": "#a8c7ff",
