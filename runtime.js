@@ -77,7 +77,7 @@ const CAM_OFFSET = { x: -10, y: 11, z: -10 };
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
 export class DancingLineGame {
-  constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl, autoPlay, enableGlow, enableClickMarks, invincibility, speedMult }) {
+  constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl, autoPlay, enableGlow, enableClickMarks, invincibility, speedMult, audioOffset }) {
     this.canvas = canvas;
     this.level = level;
     this.onEvent = onEvent || (() => {});
@@ -88,6 +88,7 @@ export class DancingLineGame {
     this.enableClickMarks = enableClickMarks !== false;
     this.invincibility = invincibility || false;
     this.speedMult = 1 + (speedMult || 0);
+    this.audioOffset = audioOffset || 0;
 
     this.state = "ready";
     this.gemsCollected = 0;
@@ -339,7 +340,7 @@ export class DancingLineGame {
     this.scene.add(ring);
     this.finishRing = ring;
 
-    const darkMarkerIds = ["beginning", "piano", "winter", "desert", "earth", "dream-of-sky", "west", "samsara", "chaos"];
+    const darkMarkerIds = ["beginning", "piano", "winter", "desert", "earth", "dream-of-sky", "west", "samsara", "chaos", "ugly-duckling", "spring", "romance", "heracles", "end"];
     const markerColor = darkMarkerIds.includes(this.level.id) ? 0x000000 : 0xffffff;
     const hs = PLAYER_SIZE * 0.75;
     const hi = hs - 0.03;
@@ -945,7 +946,7 @@ export class DancingLineGame {
     const tempo = (this.level.tempo || 6) * this.speedMult;
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
     const baseDelay = 0.476 / tempo;
-    this._musicDelay = firstLen / tempo + baseDelay + (this.level.audioDelay || 0);
+    this._musicDelay = firstLen / tempo + baseDelay + (this.level.audioDelay || 0) + this.audioOffset;
     setTimeout(() => {
       this.music.setRate(this.speedMult);
       this.music.play();

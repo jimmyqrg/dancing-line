@@ -581,6 +581,131 @@
       }
       .settings-number:focus { border-color: rgba(255, 255, 255, 0.5); }
 
+      .settings-btn {
+        padding: 0.6rem 1.2rem;
+        font-family: inherit;
+        font-size: 0.9rem;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.4rem;
+        cursor: pointer;
+        transition: background 200ms, border-color 200ms;
+      }
+      .settings-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.4);
+      }
+
+      .calibration-modal {
+        position: fixed; inset: 0; z-index: 60;
+        display: flex;
+        align-items: center; justify-content: center;
+        background:
+          radial-gradient(120% 80% at 50% 110%, rgba(10, 31, 35, 0.9) 0%, transparent 60%),
+          radial-gradient(90% 60% at 50% -10%, rgba(0, 0, 0, 0.8), transparent 70%),
+          linear-gradient(180deg, rgba(10, 31, 35, 0.9), rgba(22, 82, 74, 0.8) 55%, rgba(82, 197, 160, 0.7));
+        backdrop-filter: blur(16px) saturate(1.2);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 260ms ease;
+      }
+      .calibration-modal.is-active { opacity: 1; pointer-events: auto; }
+      .calibration-modal__inner {
+        position: relative;
+        padding: 2.5rem 2.4rem;
+        min-width: min(90vw, 400px);
+        display: flex; flex-direction: column; gap: 1.8rem;
+        align-items: center;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        box-shadow: 0 0 40px rgba(160, 255, 220, 0.2);
+        transform: scale(0.85) translateY(12px);
+        opacity: 0;
+        transition: transform 300ms cubic-bezier(0.34, 1.4, 0.64, 1), opacity 260ms ease;
+      }
+      .calibration-modal.is-active .calibration-modal__inner {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+      .calibration-modal__title {
+        font-size: 1.4rem;
+        letter-spacing: 0.1em;
+        margin-bottom: 0.5rem;
+      }
+      .calibration-modal__instructions {
+        font-size: 1rem;
+        line-height: 1.5;
+        opacity: 0.9;
+        max-width: 320px;
+        margin-bottom: 1rem;
+      }
+      .calibration-modal__actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+      }
+      .calibration-btn {
+        padding: 0.75rem 1.5rem;
+        font-family: inherit;
+        font-size: 0.95rem;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.6rem;
+        cursor: pointer;
+        transition: all 200ms ease;
+        min-width: 80px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+      .calibration-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+      .calibration-btn--start {
+        background: rgba(100, 200, 130, 0.6);
+        border-color: rgba(100, 200, 130, 0.8);
+        color: #ffffff;
+      }
+      .calibration-btn--start:hover {
+        background: rgba(100, 200, 130, 0.8);
+        border-color: rgba(100, 200, 130, 1);
+      }
+      .calibration-modal__progress {
+        width: 100%;
+        max-width: 300px;
+        height: 8px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+      }
+      .calibration-modal__progress-fill {
+        width: 0%;
+        height: 100%;
+        background: rgba(100,200,130,0.8);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+      }
+      .calibration-modal__count {
+        font-size: 1.1rem;
+        font-weight: bold;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+      }
+      .calibration-modal__result {
+        font-size: 1rem;
+        color: #a4ffd8;
+        font-weight: bold;
+      }
+
       .ico {
         width: 2.6rem;
         height: 2.6rem;
@@ -1105,6 +1230,7 @@
           <button class="play-cta" data-play aria-label="Play level">
             <svg class="icon"><use href="#i-play" /></svg>
           </button>
+          <button class="test-btn" data-adjust-level data-i18n="adjust" aria-label="Adjust level timing">Adjust</button>
           <button class="test-btn" data-test-open data-i18n="test" aria-label="Test custom level">Test</button>
         </footer>
       </section>
@@ -1165,6 +1291,31 @@
             <label class="settings-label" data-i18n="speedMult">Speed Multiplier</label>
             <input type="number" class="settings-number" data-speed-mult value="0" step="0.1">
           </div>
+          <div class="settings-modal__row">
+            <button class="settings-btn" data-offset-adjustment data-i18n="offsetAdjustment">Offset Adjustment</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Offset Calibration Modal -->
+      <div class="calibration-modal" data-calibration-modal>
+        <div class="calibration-modal__inner">
+          <button class="modal__close" data-calibration-close aria-label="Close">
+            <svg><use href="#i-close" /></svg>
+          </button>
+          <h3 class="calibration-modal__title" data-i18n="offsetCalibration">Offset Calibration</h3>
+          <p class="calibration-modal__instructions" data-i18n="calibrationInstructions">
+            Press space, click, or tap with the rhythm of the beeps. We'll measure your input delay.
+          </p>
+          <div class="calibration-modal__actions">
+            <button class="calibration-btn calibration-btn--start" data-calibration-start data-i18n="start">Start</button>
+            <button class="calibration-btn calibration-btn--skip" data-calibration-skip data-i18n="skip">Skip</button>
+          </div>
+          <div class="calibration-modal__progress">
+            <div class="calibration-modal__progress-fill" data-calibration-progress></div>
+          </div>
+          <p class="calibration-modal__count" data-calibration-count>0 / 20</p>
+          <p class="calibration-modal__result" data-calibration-result style="display: none;"></p>
         </div>
       </div>
 
@@ -1362,6 +1513,7 @@
           tileTop: "rgba(255, 230, 180, 0.18)",
           tileSide1: "rgba(60, 20, 0, 0.5)",
           tileSide2: "rgba(60, 20, 0, 0.32)",
+          audioDelay: -0.1,
         },
         {
           id: "ugly-duckling",
@@ -1990,12 +2142,26 @@
 
       // Boot → select (only after loading completes)
       screens.boot.addEventListener("click", () => {
-        if (window.__bootReady) showScreen("select");
+        if (window.__bootReady) {
+          const hasCalibrated = localStorage.getItem("dl_has_calibrated") === "1";
+          if (!hasCalibrated) {
+            localStorage.setItem("dl_has_calibrated", "1");
+            startCalibration();
+          } else {
+            showScreen("select");
+          }
+        }
       });
       screens.boot.addEventListener("keydown", (e) => {
         if ((e.key === "Enter" || e.key === " ") && window.__bootReady) {
           e.preventDefault();
-          showScreen("select");
+          const hasCalibrated = localStorage.getItem("dl_has_calibrated") === "1";
+          if (!hasCalibrated) {
+            localStorage.setItem("dl_has_calibrated", "1");
+            startCalibration();
+          } else {
+            showScreen("select");
+          }
         }
       });
 
@@ -2050,6 +2216,10 @@
           clearTimeout(selectHero._warmTimeout);
           selectHero._warmTimeout = setTimeout(() => selectHero.classList.remove("is-warm"), 720);
         }
+      }
+
+      function getLevelDisplayName(lvl) {
+        return currentLang === "zh" && LEVEL_NAMES_ZH[lvl.id] ? LEVEL_NAMES_ZH[lvl.id] : lvl.name;
       }
 
       function goTo(idx, dir = 1) {
@@ -2116,6 +2286,8 @@
         }
         gameCanvas.style.display = "none";
         canvas.style.display = "block";
+        // Reset UI colors to default
+        resetUIColors();
       }
 
       function showModal(el, on) {
@@ -2139,6 +2311,22 @@
         return data;
       }
 
+      function getLevelAudioOffset(levelId) {
+        return parseFloat(localStorage.getItem(`dl_audio_offset_${levelId}`)) || 0;
+      }
+
+      function setLevelAudioOffset(levelId, offset) {
+        localStorage.setItem(`dl_audio_offset_${levelId}`, String(offset));
+      }
+
+      function hasLevelAudioOffset(levelId) {
+        return localStorage.getItem(`dl_audio_offset_${levelId}`) !== null;
+      }
+
+      function getAudioOffsetForLevel(levelId) {
+        return audioOffset + getLevelAudioOffset(levelId);
+      }
+
       function ensureAudioLoaded(url) {
         if (!url) return Promise.resolve();
         const cached = preloadedAudio[url];
@@ -2159,6 +2347,12 @@
           showToast("Level not loaded");
           return;
         }
+
+        if (!hasLevelAudioOffset(lvl.id) && !calibrationAutoLaunch) {
+          startCalibration(lvl.id, true);
+          return;
+        }
+
         gameTitleEl.textContent = getLevelDisplayName(lvl);
         gemsEl.textContent = "0";
         progressEl.style.width = "0%";
@@ -2166,6 +2360,9 @@
         showModal(dieModal, false);
         showModal(winModal, false);
         dieVignette.classList.remove("is-active");
+
+        // Set UI colors based on level's click mark color
+        setUIColorsForLevel(lvl.id);
 
         await ensureAudioLoaded(data.audio);
 
@@ -2185,6 +2382,7 @@
           enableClickMarks,
           invincibility,
           speedMult,
+          audioOffset: getAudioOffsetForLevel(lvl.id),
         });
         showScreen("game");
         if (!autoPlay) tapPrompt.classList.add("is-active");
@@ -2294,6 +2492,12 @@
         showModal(dieModal, false);
         showModal(winModal, false);
         dieVignette.classList.remove("is-active");
+
+        // Set UI colors based on test level's click mark color if it has an ID
+        if (data.id) {
+          setUIColorsForLevel(data.id);
+        }
+
         destroyGame();
         canvas.style.display = "none";
         gameCanvas.style.display = "block";
@@ -2303,6 +2507,7 @@
           audioPlay: sound,
           onEvent: handleGameEvent,
           musicUrl: data.audio || null,
+          audioOffset,
         });
         showScreen("game");
         tapPrompt.classList.add("is-active");
@@ -2313,23 +2518,36 @@
       // ─────────────────────────────────────────────────────────────
 
       const LEVEL_NAMES_ZH = {
-        beginning: "时光", piano: "钢琴", ocean: "海洋", winter: "寒冬",
-        "storm-remix": "蓝调风暴", "dream-of-sky": "天空之梦",
-        desert: "沙漠", west: "西部世界", earth: "地球",
+        spring: "春天", beginning: "时光", piano: "钢琴", ocean: "海洋", winter: "寒冬",
+        "storm-remix": "蓝调风暴", end: "末日", "dream-of-sky": "天空之梦",
+        desert: "沙漠", "ugly-duckling": "丑小鸭", west: "西部世界", earth: "地球",
         storm: "风暴", crystal: "水晶", war: "站殇",
         taurus: "金牛座", "spring-festival": "春节",
-        chaos: "混沌", "legend-of-assassin": "刺客传奇",
-        "abs-storm": "风暴之怒", samsara: "轮回",
+        romance: "心动", chaos: "混沌", heracles: "赫拉克勒斯", "legend-of-assassin": "刺客传奇",
+        "abs-storm": "风暴之怒", samsara: "轮回", judgement: "审判时刻",
       };
 
       let currentLang = localStorage.getItem("dl_lang") || "en";
+
       let autoPlay = localStorage.getItem("dl_autoplay") === "1";
       let enableGlow = localStorage.getItem("dl_glow") !== "0";
       let enableClickMarks = localStorage.getItem("dl_clickmarks") !== "0";
       let invincibility = localStorage.getItem("dl_invincible") === "1";
       let speedMult = parseFloat(localStorage.getItem("dl_speedmult")) || 0;
+      let audioOffset = parseFloat(localStorage.getItem("dl_audio_offset")) || 0;
+
+      // Calibration state
+      let calibrationActive = false;
+      let calibrationTaps = [];
+      let calibrationStartTime = 0;
+      let calibrationInterval = null;
+      let calibrationBeepTimeout = null;
+      let calibrationCurrentAudio = null;
+      let calibrationLevelId = null;
+      let calibrationAutoLaunch = false;
 
       const settingsModal = document.querySelector("[data-settings-modal]");
+      const calibrationModal = document.querySelector("[data-calibration-modal]");
       const autoplayToggle = document.querySelector("[data-autoplay-toggle]");
       const glowToggle = document.querySelector("[data-glow-toggle]");
       const clickMarksToggle = document.querySelector("[data-clickmarks-toggle]");
@@ -2337,9 +2555,144 @@
       const speedMultInput = document.querySelector("[data-speed-mult]");
       const langBtns = document.querySelectorAll("[data-lang]");
 
-      function getLevelDisplayName(lvl) {
-        if (currentLang === "zh") return LEVEL_NAMES_ZH[lvl.id] || lvl.name;
-        return lvl.name;
+      const calibrationProgressEl = document.querySelector("[data-calibration-progress]");
+      const calibrationCountEl = document.querySelector("[data-calibration-count]");
+      const calibrationResultEl = document.querySelector("[data-calibration-result]");
+
+      function playCalibrationBeep() {
+        try {
+          const a = new Audio(audioAssets["victory"]);
+          a.volume = 0.6;
+          calibrationCurrentAudio = a;
+          a.play().catch(() => {});
+          return a;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function startCalibration(levelId = null, autoLaunch = false) {
+        calibrationActive = false;
+        calibrationTaps = [];
+        calibrationStartTime = 0;
+        calibrationProgressEl.style.width = "0%";
+        calibrationCountEl.textContent = "0 / 20";
+        calibrationResultEl.style.display = "none";
+        calibrationModal.classList.add("is-active");
+        calibrationLevelId = levelId;
+        calibrationAutoLaunch = autoLaunch;
+      }
+
+      function beginCalibration() {
+        calibrationActive = true;
+        calibrationTaps = [];
+        calibrationStartTime = performance.now();
+        calibrationProgressEl.style.width = "0%";
+        calibrationCountEl.textContent = "0 / 20";
+        calibrationResultEl.style.display = "none";
+
+        // Play beeps every 500ms for 20 times to cover 10 seconds.
+        let beepCount = 0;
+        calibrationInterval = setInterval(() => {
+          if (beepCount >= 20) {
+            finishCalibration();
+            return;
+          }
+          playCalibrationBeep();
+          beepCount++;
+        }, 500);
+      }
+
+      function stopCalibration() {
+        calibrationActive = false;
+        if (calibrationInterval) {
+          clearInterval(calibrationInterval);
+          calibrationInterval = null;
+        }
+        if (calibrationBeepTimeout) {
+          clearTimeout(calibrationBeepTimeout);
+          calibrationBeepTimeout = null;
+        }
+        if (calibrationCurrentAudio) {
+          calibrationCurrentAudio.pause();
+          calibrationCurrentAudio.currentTime = 0;
+          calibrationCurrentAudio = null;
+        }
+      }
+
+      function finishCalibration() {
+        stopCalibration();
+        const levelId = calibrationLevelId;
+        const autoLaunch = calibrationAutoLaunch;
+        calibrationAutoLaunch = false;
+        calibrationLevelId = null;
+
+        if (calibrationTaps.length >= 8) { // Require at least 8 taps for calculation
+          const offsets = [];
+          for (let i = 0; i < calibrationTaps.length; i++) {
+            const expectedTime = calibrationStartTime + (i + 1) * 500;
+            const actualTime = calibrationTaps[i];
+            offsets.push(actualTime - expectedTime);
+          }
+          const avgOffset = offsets.reduce((a, b) => a + b, 0) / offsets.length;
+          if (levelId) {
+            setLevelAudioOffset(levelId, avgOffset / 1000);
+            calibrationResultEl.textContent = `Level calibration saved: ${(avgOffset).toFixed(1)}ms`;
+          } else {
+            audioOffset = avgOffset / 1000;
+            localStorage.setItem("dl_audio_offset", String(audioOffset));
+            calibrationResultEl.textContent = `Offset set to ${(audioOffset * 1000).toFixed(1)}ms`;
+          }
+        } else {
+          if (!levelId) {
+            audioOffset = 0;
+            localStorage.setItem("dl_audio_offset", "0");
+            calibrationResultEl.textContent = "Calibration skipped - no offset applied";
+          } else {
+            calibrationResultEl.textContent = "Calibration skipped - no level offset applied";
+          }
+        }
+        calibrationResultEl.style.display = "block";
+        setTimeout(() => {
+          calibrationModal.classList.remove("is-active");
+          if (autoLaunch && levelId) {
+            startLevel();
+          } else {
+            showScreen("select");
+          }
+        }, 2000);
+      }
+
+      function handleCalibrationInput() {
+        if (!calibrationActive) return;
+        const now = performance.now();
+        calibrationTaps.push(now);
+        const progress = Math.min(calibrationTaps.length / 20 * 100, 100);
+        calibrationProgressEl.style.width = progress + "%";
+        calibrationCountEl.textContent = `${calibrationTaps.length} / 20`;
+        if (calibrationTaps.length >= 20) {
+          finishCalibration();
+        }
+      }
+
+      function getLevelClickMarkColor(levelId) {
+        const darkMarkerIds = ["beginning", "piano", "winter", "desert", "earth", "dream-of-sky", "west", "samsara", "chaos", "ugly-duckling", "spring", "romance", "heracles", "end"];
+        return darkMarkerIds.includes(levelId) ? "#000000" : "#ffffff";
+      }
+
+      function setUIColorsForLevel(levelId) {
+        const clickMarkColor = getLevelClickMarkColor(levelId);
+        const root = document.documentElement;
+        root.style.setProperty("--ink", clickMarkColor);
+        root.style.setProperty("--ink-soft", clickMarkColor === "#000000" ? "rgba(0, 0, 0, 0.72)" : "rgba(255, 255, 255, 0.72)");
+        root.style.setProperty("--ink-faint", clickMarkColor === "#000000" ? "rgba(0, 0, 0, 0.36)" : "rgba(255, 255, 255, 0.36)");
+      }
+
+      function resetUIColors() {
+        const root = document.documentElement;
+        root.style.removeProperty("--ink");
+        root.style.removeProperty("--ink-soft");
+        root.style.removeProperty("--ink-faint");
       }
 
       const I18N = {
@@ -2355,6 +2708,12 @@
           enableClickMarks: "Enable Click Marks",
           invincibility: "Invincibility",
           speedMult: "Speed Multiplier",
+          offsetAdjustment: "Offset Adjustment",
+          adjust: "Adjust",
+          offsetCalibration: "Offset Calibration",
+          calibrationInstructions: "Press space, click, or tap with the rhythm of the beeps. We'll measure your input delay.",
+          start: "Start",
+          skip: "Skip",
           testLevel: "Test Level",
           test: "Test",
           play: "Play",
@@ -2378,6 +2737,12 @@
           enableClickMarks: "启用点击标记",
           invincibility: "无敌模式",
           speedMult: "速度倍率",
+          offsetAdjustment: "偏移调整",
+          adjust: "调整",
+          offsetCalibration: "偏移校准",
+          calibrationInstructions: "随着蜂鸣声的节奏按空格键、点击或触摸。我们将测量您的输入延迟。",
+          start: "开始",
+          skip: "跳过",
           testLevel: "测试关卡",
           test: "测试",
           play: "开始",
@@ -2472,6 +2837,64 @@
       settingsModal.addEventListener("click", (e) => {
         if (e.target === settingsModal) settingsModal.classList.remove("is-active");
       });
+
+      document.querySelector("[data-offset-adjustment]").addEventListener("click", () => {
+        settingsModal.classList.remove("is-active");
+        startCalibration();
+      });
+
+      document.querySelector("[data-adjust-level]").addEventListener("click", () => {
+        const lvl = LEVELS[currentIdx];
+        if (!lvl) return;
+        startCalibration(lvl.id, false);
+      });
+
+      document.querySelector("[data-calibration-close]").addEventListener("click", () => {
+        stopCalibration();
+        calibrationModal.classList.remove("is-active");
+        showScreen("select");
+      });
+      calibrationModal.addEventListener("click", (e) => {
+        if (e.target === calibrationModal) {
+          stopCalibration();
+          calibrationModal.classList.remove("is-active");
+          showScreen("select");
+        }
+      });
+
+      document.querySelector("[data-calibration-start]").addEventListener("click", () => {
+        beginCalibration();
+      });
+
+      document.querySelector("[data-calibration-skip]").addEventListener("click", () => {
+        stopCalibration();
+        audioOffset = 0;
+        localStorage.setItem("dl_audio_offset", "0");
+        calibrationResultEl.textContent = "Calibration skipped - no offset applied";
+        calibrationResultEl.style.display = "block";
+        setTimeout(() => {
+          calibrationModal.classList.remove("is-active");
+          showScreen("select");
+        }, 1500);
+      });
+
+      // Handle calibration input
+      function handleCalibrationKeydown(e) {
+        if (e.key === " " && calibrationActive) {
+          e.preventDefault();
+          handleCalibrationInput();
+        }
+      }
+
+      function handleCalibrationClick() {
+        if (calibrationActive) {
+          handleCalibrationInput();
+        }
+      }
+
+      document.addEventListener("keydown", handleCalibrationKeydown);
+      calibrationModal.addEventListener("click", handleCalibrationClick);
+      calibrationModal.addEventListener("touchstart", handleCalibrationClick);
 
       applyAutoPlay();
       applyGlow();
