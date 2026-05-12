@@ -1,0 +1,1148 @@
+{
+  "name": "The End",
+  "tile": 1,
+  "tempo": 6,
+  "trailWidth": 0.32,
+  "glow": false,
+  "effects": {
+    "fog": {
+      "color": "#8f8f8f",
+      "near": 6,
+      "far": 30
+    },
+    "particles": {
+      "type": "dust",
+      "count": 150
+    },
+    "pathAnimation": {
+      "type": "ascend",
+      "revealDist": 1,
+      "speed": 1
+    }
+  },
+  "theme": {
+    "sky": "#000000",
+    "ground": "#000000",
+    "tileTop": "#c5c6a9",
+    "tileSide": "#767765",
+    "line": "#3b3b3b",
+    "glow": "#3b3b3b",
+    "fogNear": 16,
+    "fogFar": 90,
+    "ambient": "#000000",
+    "key": "#3b3b3b",
+    "decor": "#8a8b76"
+  },
+  "start": {
+    "x": 0,
+    "z": 0,
+    "dir": "x"
+  },
+  "segments": [
+    {
+      "axis": "x",
+      "length": 8,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.4,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 3.8,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 5.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 6.7,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 7.8,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.6,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 6.5,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 6,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 8.6,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 3.8,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 6.1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 3.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.4,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 6.3,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.4,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.3,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 3.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.6,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 5.9,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4.3,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 8.3,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 8.5,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 3.7,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 5.3,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1.1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1.1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 3.7,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 3.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 5.6,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 1,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 0.9,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 0.9,
+      "width": 6
+    },
+    {
+      "axis": "z",
+      "length": 0.9,
+      "width": 6
+    },
+    {
+      "axis": "x",
+      "length": 4.3,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4.2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 5.6,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 0.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 0.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 0.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 5.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 0.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 0.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4.3,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.8,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4.3,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4.2,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 2.2,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 4,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4.2,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 4.2,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 2.2,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 1.1,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 1.1,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 0.9,
+      "width": 3
+    },
+    {
+      "axis": "z",
+      "length": 1,
+      "width": 3
+    },
+    {
+      "axis": "x",
+      "length": 7.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 4.3,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4.2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 8.5,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 3.7,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.3,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 3.9,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 4,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 8.4,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 8.2,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 1.9,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 2,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 6.1,
+      "width": 4
+    },
+    {
+      "axis": "z",
+      "length": 2.1,
+      "width": 4
+    },
+    {
+      "axis": "x",
+      "length": 18.8,
+      "width": 4
+    }
+  ],
+  "gems": [],
+  "decor": [],
+  "totalSegments": 220,
+  "totalTiles": 675.0000000000006,
+  "audio": "https://cdn.jsdelivr.net/gh/jimmyqrg/dancing-line-music@main/end.mp3"
+}
