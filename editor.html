@@ -170,6 +170,10 @@
     <input type="number" id="player-speed" value="5" min="1" max="20" step="0.5">
   </div>
   <div class="setup-row">
+    <label>Audio Delay</label>
+    <input type="number" id="audio-delay" value="0" step="0.05" min="-2" max="2">
+  </div>
+  <div class="setup-row">
     <label>Enable Glow</label>
     <input type="checkbox" id="enable-glow">
   </div>
@@ -326,6 +330,7 @@ const colLine = document.getElementById("col-line");
 const startLengthEl = document.getElementById("start-length");
 const startWidthEl = document.getElementById("start-width");
 const playerSpeedEl = document.getElementById("player-speed");
+const audioDelayEl = document.getElementById("audio-delay");
 const enableGlowEl = document.getElementById("enable-glow");
 const musicSelect = document.getElementById("music-select");
 const musicFileEl = document.getElementById("music-file");
@@ -386,7 +391,7 @@ function saveSettings() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       bg: colBg.value, path: colPath.value, line: colLine.value,
       startLength: startLengthEl.value, startWidth: startWidthEl.value,
-      speed: playerSpeedEl.value, glow: enableGlowEl.checked,
+      speed: playerSpeedEl.value, audioDelay: audioDelayEl.value, glow: enableGlowEl.checked,
       music: musicSelect.value === "__upload__" ? "" : musicSelect.value,
       fx: {
         fogOn: fxFogOn.checked, fogColor: fxFogColor.value,
@@ -413,6 +418,7 @@ function loadSettings() {
     if (d.startLength) startLengthEl.value = d.startLength;
     if (d.startWidth) startWidthEl.value = d.startWidth;
     if (d.speed) playerSpeedEl.value = d.speed;
+    if (d.audioDelay != null) audioDelayEl.value = d.audioDelay;
     if (d.glow != null) enableGlowEl.checked = d.glow;
     if (d.music) musicSelect.value = d.music;
     if (d.fx) {
@@ -817,6 +823,7 @@ function buildJSON() {
     name: "Custom Level",
     tile: 1.0,
     tempo: speed,
+    audioDelay: parseFloat(audioDelayEl.value) || 0,
     trailWidth: 0.32,
     glow: enableGlowEl.checked,
     effects: buildEffects(),
