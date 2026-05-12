@@ -1621,7 +1621,7 @@
         },
         "pathAnimation": {
             "type": "chaos",
-            "revealDist": 1.3,
+            "revealDist": 1.1,
             "speed": 2,
             "lastEarlyReveal": true
         }
