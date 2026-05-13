@@ -2316,8 +2316,35 @@
         return localStorage.getItem(`dl_audio_offset_${levelId}`) !== null;
       }
 
+      const LEVEL_AUDIO_ADJUSTMENTS = {
+        "judgement": -0.6,
+        "abs-storm": -0.2,
+        "samsara": -0.08,
+        "legend-of-assassin": 0.05,
+        "heracles": 0.3,
+        "chaos": 0.08,
+        "romance": 0.12,
+        "spring-festival": 0.04,
+        "taurus": 0.04,
+        "war": 0.04,
+        "crystal": 0.01,
+        "storm": 0,
+        "earth": 0,
+        "west": 0,
+        "ugly-duckling": 0.12,
+        "desert": 0.02,
+        "dream-of-sky": 0.02,
+        "end": 0.04,
+        "storm-remix": 0.02,
+        "winter": 0.06,
+        "ocean": 0.04,
+        "piano": -0.06,
+        "beginning": 0.06,
+        "spring": 0.02,
+      };
+
       function getAudioOffsetForLevel(levelId) {
-        return audioOffset + getLevelAudioOffset(levelId);
+        return audioOffset + getLevelAudioOffset(levelId) + (LEVEL_AUDIO_ADJUSTMENTS[levelId] || 0);
       }
 
       function ensureAudioLoaded(url) {
