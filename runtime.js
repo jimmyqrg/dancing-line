@@ -1163,7 +1163,6 @@ export class DancingLineGame {
   _win() {
     if (this.state === "won" || this.state === "dead") return;
     this.state = "won";
-    this.music.stop();
     this.audioPlay("victory");
     this.onEvent({ type: "victory", gems: this.gemsCollected });
   }
