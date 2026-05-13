@@ -2368,11 +2368,6 @@
           return;
         }
 
-        if (!hasLevelAudioOffset(lvl.id) && !calibrationAutoLaunch) {
-          startCalibration(lvl.id, true);
-          return;
-        }
-
         gameTitleEl.textContent = getLevelDisplayName(lvl);
         gemsEl.textContent = "0";
         progressEl.style.width = "0%";
