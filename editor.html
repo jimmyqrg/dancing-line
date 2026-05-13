@@ -771,7 +771,7 @@ function commitSegment() {
   rebuildPath();
 }
 
-function finish() {
+async function finish() {
   commitSegment();
   running = false;
   if (musicAudio) { musicAudio.pause(); musicAudio = null; }
@@ -780,8 +780,18 @@ function finish() {
   destroyScene();
   editorEl.classList.remove("active");
 
-  jsonOut.value = JSON.stringify(buildJSON(), null, 2);
+  const levelJson = await buildJSON();
+  jsonOut.value = JSON.stringify(levelJson, null, 2);
   outputEl.classList.add("active");
+}
+
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Failed to read audio file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 function buildEffects() {
@@ -817,7 +827,7 @@ function buildEffects() {
   return fx;
 }
 
-function buildJSON() {
+async function buildJSON() {
   const segs = segments.map(s => ({ axis: s.axis, length: Math.round(s.length * 10) / 10, width: s.width }));
   const result = {
     name: "Custom Level",
@@ -843,8 +853,12 @@ function buildJSON() {
     totalTiles: segs.reduce((sum, seg) => sum + seg.length, 0)
   };
   if (musicUrl) {
-    result.audio = musicUrl.startsWith("blob:") && musicFileEl.files.length > 0
-      ? musicFileEl.files[0].name : musicUrl;
+    if (musicSelect.value === "__upload__" && musicFileEl.files.length > 0) {
+      const file = musicFileEl.files[0];
+      result.audio = await fileToDataURL(file);
+    } else {
+      result.audio = musicUrl;
+    }
   }
   return result;
 }

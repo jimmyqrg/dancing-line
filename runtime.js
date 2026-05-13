@@ -82,7 +82,8 @@ export class DancingLineGame {
     this.level = level;
     this.onEvent = onEvent || (() => {});
     this.audioPlay = audioPlay || (() => {});
-    this.music = new MusicPlayer(musicUrl, preloadedAudioEl);
+    const audioSource = musicUrl || (level && level.audio) || null;
+    this.music = new MusicPlayer(audioSource, preloadedAudioEl);
     this.autoPlay = autoPlay || false;
     this.enableGlow = !!enableGlow && (level.glow === true);
     this.enableClickMarks = enableClickMarks !== false;

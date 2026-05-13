@@ -2267,15 +2267,19 @@
       const tapPrompt = document.querySelector("[data-tap-prompt]");
 
       let game = null;
+      let pendingModalTimeout = null;
 
       function destroyGame() {
         if (game) {
           game.destroy();
           game = null;
         }
+        if (pendingModalTimeout) {
+          clearTimeout(pendingModalTimeout);
+          pendingModalTimeout = null;
+        }
         gameCanvas.style.display = "none";
         canvas.style.display = "block";
-        // Reset UI colors to default
         resetUIColors();
       }
 
@@ -2399,19 +2403,25 @@
           case "progress":
             progressEl.style.width = (ev.value * 100).toFixed(2) + "%";
             break;
-          case "death": {
+        case "death": {
             const pct = Math.round(parseFloat(progressEl.style.width) || 0);
             dieGemsEl.textContent = String(ev.gems);
             document.querySelector("[data-die-title]").textContent = pct + "%";
             dieVignette.classList.add("is-active");
-            setTimeout(() => showModal(dieModal, true), 700);
+            if (pendingModalTimeout) {
+              clearTimeout(pendingModalTimeout);
+            }
+            pendingModalTimeout = setTimeout(() => showModal(dieModal, true), 700);
             const lvl = LEVELS[currentIdx];
             if (lvl && !autoPlay && !invincibility) saveLevelProgress(lvl.id, pct);
             break;
           }
           case "victory": {
             winGemsEl.textContent = String(ev.gems);
-            setTimeout(() => showModal(winModal, true), 600);
+            if (pendingModalTimeout) {
+              clearTimeout(pendingModalTimeout);
+            }
+            pendingModalTimeout = setTimeout(() => showModal(winModal, true), 600);
             const lvl = LEVELS[currentIdx];
             if (lvl && !autoPlay && !invincibility) saveLevelProgress(lvl.id, 100);
             break;
@@ -2432,6 +2442,10 @@
       }
 
       function quitToSelect() {
+        if (pendingModalTimeout) {
+          clearTimeout(pendingModalTimeout);
+          pendingModalTimeout = null;
+        }
         showModal(pauseModal, false);
         showModal(dieModal, false);
         showModal(winModal, false);
@@ -2499,6 +2513,12 @@
           audioPlay: sound,
           onEvent: handleGameEvent,
           musicUrl: data.audio || null,
+          preloadedAudioEl: data.audio ? preloadedAudio[data.audio] || null : null,
+          autoPlay,
+          enableGlow,
+          enableClickMarks,
+          invincibility,
+          speedMult,
           audioOffset,
         });
         showScreen("game");
