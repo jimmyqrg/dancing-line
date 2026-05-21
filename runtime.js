@@ -221,7 +221,7 @@ export class DancingLineGame {
       let sx = start.x * tile, sz = start.z * tile;
       for (let si = 0; si < lvl.segments.length; si++) {
         const seg = lvl.segments[si];
-        const w = widthScale(seg.width || 1) * tile;
+        const w = widthScale(seg.width != null ? seg.width : 1) * tile;
         const halfW = w / 2;
         const len = seg.length * tile;
         const ext = si === 0 ? 0 : halfW;
@@ -281,7 +281,7 @@ export class DancingLineGame {
       const pathGroup = new THREE.Group();
       for (let si = 0; si < this.level.segments.length; si++) {
         const seg = this.level.segments[si];
-        const w = widthScale(seg.width || 1) * tile;
+        const w = widthScale(seg.width != null ? seg.width : 1) * tile;
         const len = seg.length * tile;
         // Extend behind the start to cover corner gaps (except first segment)
         const ext = si === 0 ? 0 : w / 2;
@@ -967,10 +967,7 @@ export class DancingLineGame {
     if (this.state === "paused") {
       this.state = "playing";
       this._lastTs = 0;
-      const musicTime = this.music._audio ? this.music._audio.currentTime : 0;
-      if (musicTime > 0) {
-        this._playingTime = (this._musicDelay || 0) + musicTime / (this.speedMult || 1);
-      } else {
+      if (!this.music._audio || this.music._audio.currentTime === 0) {
         this._playingTime = this._pausedPlayingTime || this._playingTime;
       }
       this.music.resume();
