@@ -74,7 +74,7 @@ const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.35;
 const CAM_OFFSET = { x: -10, y: 11, z: -10 };
 
-function widthScale(w) { return w <= 0 ? 0.1 : Math.pow(5, (w - 1) / 8); }
+function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
 export class DancingLineGame {
   constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl, autoPlay, enableGlow, enableClickMarks, invincibility, speedMult, audioOffset }) {
@@ -1290,8 +1290,9 @@ export class DancingLineGame {
 
   _frame(ts) {
     if (this._destroyed) return;
-    const dt = this._lastTs ? (ts - this._lastTs) / 1000 : 0;
+    const rawDt = this._lastTs ? (ts - this._lastTs) / 1000 : 0;
     this._lastTs = ts;
+    const dt = Math.min(rawDt, 1 / 30);
     this._update(dt);
     if (this.composer) this.composer.render(dt);
     else this.renderer.render(this.scene, this.camera);
@@ -1482,7 +1483,7 @@ export class DancingLineGame {
     );
     const targetLook = new THREE.Vector3(this.position.x, 0, this.position.z);
 
-    const s = 1 - Math.pow(0.008, dt);
+    const s = 1 - Math.pow(0.02, dt);
     this._camPos.lerp(targetPos, s);
     this._camLook.lerp(targetLook, s);
     this.camera.position.copy(this._camPos);
