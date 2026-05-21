@@ -946,8 +946,7 @@ export class DancingLineGame {
     this._playingTime = 0;
     const tempo = (this.level.tempo || 6) * this.speedMult;
     const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
-    const baseDelay = 0.476 / tempo;
-    this._musicDelay = firstLen / tempo + baseDelay + (this.level.audioDelay || 0) + this.audioOffset;
+    this._musicDelay = firstLen / tempo + (this.level.audioDelay || 0) + this.audioOffset;
     setTimeout(() => {
       this.music.setRate(this.speedMult);
       this.music.play();

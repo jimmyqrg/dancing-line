@@ -2345,8 +2345,8 @@
         "spring": 0.02,
       };
 
-      function getAudioOffsetForLevel(levelId) {
-        return audioOffset + getLevelAudioOffset(levelId) + (LEVEL_AUDIO_ADJUSTMENTS[levelId] || 0);
+      function getAudioOffsetForLevel(levelId, extraDelay) {
+        return (extraDelay || 0) + audioOffset + getLevelAudioOffset(levelId) + (LEVEL_AUDIO_ADJUSTMENTS[levelId] || 0);
       }
 
       function ensureAudioLoaded(url) {
@@ -2399,7 +2399,7 @@
           enableClickMarks,
           invincibility,
           speedMult,
-          audioOffset: getAudioOffsetForLevel(lvl.id),
+          audioOffset: getAudioOffsetForLevel(lvl.id, lvl.audioDelay),
         });
         showScreen("game");
         if (!autoPlay) tapPrompt.classList.add("is-active");
@@ -2546,7 +2546,7 @@
           enableClickMarks,
           invincibility,
           speedMult,
-          audioOffset: (data.audioDelay || 0) + audioOffset + getLevelAudioOffset(data.id || ""),
+          audioOffset: getAudioOffsetForLevel(data.id || "", data.audioDelay),
         });
         showScreen("game");
         tapPrompt.classList.add("is-active");
