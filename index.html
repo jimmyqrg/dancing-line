@@ -2167,6 +2167,7 @@
       const pauseModal = document.querySelector("[data-pause-modal]");
 
       let currentIdx = 0;
+      let currentLevelMeta = null;
       totalEl.textContent = String(LEVELS.length).padStart(2, "0");
 
       LEVELS.forEach((_, i) => {
@@ -2216,6 +2217,7 @@
         if (next === currentIdx) return;
         currentIdx = next;
         const lvl = LEVELS[currentIdx];
+        currentLevelMeta = lvl;
 
         nameEl.classList.add("is-swap");
         setTimeout(() => {
@@ -2434,7 +2436,7 @@
               clearTimeout(pendingModalTimeout);
             }
             pendingModalTimeout = setTimeout(() => showModal(dieModal, true), 700);
-            const lvl = LEVELS[currentIdx];
+            const lvl = currentLevelMeta;
             if (lvl && !autoPlay && !invincibility) saveLevelProgress(lvl.id, pct);
             break;
           }
@@ -2444,7 +2446,7 @@
               clearTimeout(pendingModalTimeout);
             }
             pendingModalTimeout = setTimeout(() => showModal(winModal, true), 600);
-            const lvl = LEVELS[currentIdx];
+            const lvl = currentLevelMeta;
             if (lvl && !autoPlay && !invincibility) saveLevelProgress(lvl.id, 100);
             break;
           }
@@ -2504,7 +2506,7 @@
       document.querySelector("[data-test-close]").addEventListener("click", () => {
         testModal.classList.remove("is-active");
       });
-      document.querySelector("[data-test-play]").addEventListener("click", () => {
+      document.querySelector("[data-test-play]").addEventListener("click", async () => {
         let data;
         try {
           data = JSON.parse(testJsonEl.value);
@@ -2525,6 +2527,9 @@
         if (data.id) {
           setUIColorsForLevel(data.id);
         }
+        currentLevelMeta = { id: data.id || "__test__" };
+
+        await ensureAudioLoaded(data.audio);
 
         destroyGame();
         canvas.style.display = "none";
@@ -2541,7 +2546,7 @@
           enableClickMarks,
           invincibility,
           speedMult,
-          audioOffset,
+          audioOffset: (data.audioDelay || 0) + audioOffset + getLevelAudioOffset(data.id || ""),
         });
         showScreen("game");
         tapPrompt.classList.add("is-active");

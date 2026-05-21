@@ -668,7 +668,7 @@ function startEditor() {
   editorEl.classList.add("active");
 
   segments = [];
-  currentWidth = Math.max(0, Math.min(9, parseInt(startWidthEl.value) || 1));
+  currentWidth = Math.max(0, Math.min(9, parseInt(startWidthEl.value) || 0));
   direction = "x";
   pos = { x: 0, z: 0 };
   currentSegLength = 0;

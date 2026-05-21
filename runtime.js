@@ -74,7 +74,7 @@ const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.35;
 const CAM_OFFSET = { x: -10, y: 11, z: -10 };
 
-function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
+function widthScale(w) { return w <= 0 ? 0.1 : Math.pow(5, (w - 1) / 8); }
 
 export class DancingLineGame {
   constructor({ canvas, level, onEvent, audioPlay, musicUrl, preloadedAudioEl, autoPlay, enableGlow, enableClickMarks, invincibility, speedMult, audioOffset }) {
