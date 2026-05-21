@@ -967,9 +967,7 @@ export class DancingLineGame {
     if (this.state === "paused") {
       this.state = "playing";
       this._lastTs = 0;
-      if (!this.music._audio || this.music._audio.currentTime === 0) {
-        this._playingTime = this._pausedPlayingTime || this._playingTime;
-      }
+      this._playingTime = this._pausedPlayingTime ?? this._playingTime;
       this.music.resume();
       this.onEvent({ type: "resume" });
     }
