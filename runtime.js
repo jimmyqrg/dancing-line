@@ -944,13 +944,9 @@ export class DancingLineGame {
     this.startedAt = performance.now();
     this._lastTs = 0;
     this._playingTime = 0;
-    const tempo = (this.level.tempo || 6) * this.speedMult;
-    const firstLen = this.level.segments[0] ? this.level.segments[0].length * (this.level.tile || 1) : 0;
-    this._musicDelay = firstLen / tempo + (this.level.audioDelay || 0) + this.audioOffset;
-    setTimeout(() => {
-      this.music.setRate(this.speedMult);
-      this.music.play();
-    }, this._musicDelay * 1000);
+    // Start music immediately so timing matches recorded clicks
+    this.music.setRate(this.speedMult);
+    this.music.play();
     this.onEvent({ type: "start" });
   }
 
@@ -1139,6 +1135,7 @@ export class DancingLineGame {
   }
 
   _checkFinish() {
+    if (this.state !== "playing") return;
     const dx = this.finishPoint.x - this.position.x;
     const dz = this.finishPoint.z - this.position.z;
     if (Math.hypot(dx, dz) < FINISH_RADIUS) this._win();
