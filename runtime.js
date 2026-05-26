@@ -73,6 +73,8 @@ const FINISH_RADIUS = 0.9;
 const FALL_DURATION = 1.0;
 const OFF_PATH_GRACE = 0.35;
 const CAM_OFFSET = { x: -10, y: 11, z: -10 };
+const DROP_GRAVITY = 18;
+const DROP_SPEED_FALL = 6; // units per second during drop fall phase
 
 function widthScale(w) { return w <= 0 ? 0.5 : Math.pow(5, (w - 1) / 8); }
 
@@ -94,6 +96,33 @@ export class DancingLineGame {
     this.state = "ready";
     this.gemsCollected = 0;
     this._destroyed = false;
+
+    // Drop state: "none" | "normal" | "float"
+    this._dropState = "none";
+    this._dropProgress = 0;
+    this._dropDuration = 0.6;
+    this._dropStartY = 0;
+    this._dropTargetY = 0;
+    this._dropAxis = "x";
+    this._dropDirection = 1;
+    this._dropVelocity = 0;
+    this._pendingDrop = null;
+    // Fall survival check
+    this._fallingOverGround = false;
+    this._fallGraceDepth = -1;
+    this._fallNoTumble = false;
+
+    // Camera rotation state
+    this._camRotating = false;
+    this._camRotAngle = 0;
+    this._camRotSpeed = 0;
+    this._camRotElapsed = 0;
+    this._camRotDuration = 4.0;
+    this._camRotAxis = 1;
+    this._camRotCenterA = new THREE.Vector3();
+    this._camRotCenterB = new THREE.Vector3();
+    this._camRotMidpoint = new THREE.Vector3();
+    this._camRotRadius = 0;
 
     this._initRenderer();
     this._initScene();
@@ -184,6 +213,7 @@ export class DancingLineGame {
     const start = { x: lvl.start.x, z: lvl.start.z };
 
     this.hasSegmentWidths = lvl.segments.some(s => s.width != null);
+    this.cameraRotation = lvl.cameraRotation || null;
 
     const corners = [{ x: start.x, z: start.z }];
     let cur = { ...start };
@@ -194,6 +224,7 @@ export class DancingLineGame {
     }
 
     this.corners = corners;
+    this.segmentDrops = lvl.segments.map(s => s.drop || null);
 
     let total = 0;
     const cumulative = [0];
@@ -928,10 +959,16 @@ export class DancingLineGame {
     this._onKeyDown = (e) => {
       const isSpace = e.code === "Space";
       const isLetter = e.code >= "KeyA" && e.code <= "KeyZ";
-  
+
       if (isSpace || isLetter) {
         e.preventDefault();
         this.handleTap();
+      }
+
+      // E key: camera rotation (if level supports it)
+      if (e.code === "KeyE" && this.cameraRotation && !this._camRotating) {
+        e.preventDefault();
+        this._startCameraRotation(e.shiftKey ? -1 : 1);
       }
     };
   
@@ -982,6 +1019,7 @@ export class DancingLineGame {
     }
     if (this.autoPlay && this.state === "playing") return;
     if (this.state !== "playing") return;
+    if (this._dropState !== "none") return; // Can't turn during drops
     if (!this._isOnPath(this.position) && !this.invincibility) return;
     if (this.direction.x !== 0) {
       this.direction.set(0, 0, 1);
@@ -992,7 +1030,17 @@ export class DancingLineGame {
     this._dropTrailUpTo(this.position.clone());
     this._commitTrailSegment();
     this.lastCornerPos = this.position.clone();
+    const prevCornerIndex = this.cornerIndex;
     this._evaluateTurnCorrectness();
+    if (this.cornerIndex > prevCornerIndex) {
+      // Corner index increased - we successfully turned at a corner
+      const drop = this.segmentDrops[prevCornerIndex];
+      if (drop) {
+        this._startDrop(drop);
+        this._updateDrop(0); // Process one frame of drop
+        return;
+      }
+    }
     this._triggerOverlappingMarkers();
 
     this.onEvent({ type: "turn", position: this.position.clone() });
@@ -1149,6 +1197,13 @@ export class DancingLineGame {
     this.state = "falling";
     this.fallTimer = 0;
     this.fallVelocity = 0;
+    // Check if there's ground directly below at current (x,z)
+    // Path surface is at y = 0 (top of 0.5 tall box at y=-0.25)
+    this._fallingOverGround = this._isOnPath(this.position);
+    // How far below ground level (y=0) the player must drop before we give up
+    this._fallGraceDepth = this._fallingOverGround ? -3 : -1;
+    // If over ground, no tumbling
+    this._fallNoTumble = this._fallingOverGround;
   }
 
   _win() {
@@ -1187,6 +1242,11 @@ export class DancingLineGame {
     this.fallVelocity = 0;
     this._offPathTimer = 0;
     this._deathSignaled = false;
+    this._dropState = "none";
+    this._pendingDrop = null;
+    this._fallingOverGround = false;
+    this._fallNoTumble = false;
+    this._camRotating = false;
     this.cornerIndex = 0;
     this.distanceTravelled = 0;
     this._playingTime = 0;
@@ -1295,9 +1355,27 @@ export class DancingLineGame {
     const t = ts(this);
 
     if (this.state === "playing" && dt > 0) {
+      // Handle active drop
+      if (this._dropState !== "none") {
+        this._updateDrop(dt);
+        this._checkGems();
+        this._checkFinish();
+        return;
+      }
+
       this._playingTime += dt;
       const speed = this.level.tempo * this.speedMult;
       const expectedDist = speed * this._playingTime;
+
+      // Check for pending drop at current corner
+      if (this._pendingDrop) {
+        this._startDrop(this._pendingDrop);
+        this._pendingDrop = null;
+        this._updateDrop(dt);
+        this._checkGems();
+        this._checkFinish();
+        return;
+      }
 
       if (this.autoPlay) {
         const autoDt = Math.min(dt, 1 / 60);
@@ -1314,8 +1392,15 @@ export class DancingLineGame {
             this._dropTrailUpTo(this.position.clone());
             this._commitTrailSegment();
             this.lastCornerPos = this.position.clone();
+            const completedSegIdx = this.cornerIndex;
             this.cornerIndex += 1;
-            if (this.cornerIndex < this.corners.length - 1) {
+            // Check for drop on the segment we just completed
+            const drop = this.segmentDrops[completedSegIdx];
+            if (drop) {
+              this._pendingDrop = drop;
+              this._triggerOverlappingMarkers();
+              return;
+            } else if (this.cornerIndex < this.corners.length - 1) {
               const after = this.corners[this.cornerIndex + 1];
               const atx = after.x * tile;
               const atz = after.z * tile;
@@ -1382,14 +1467,48 @@ export class DancingLineGame {
       this.fallVelocity += FALL_GRAVITY * dt;
       this.position.y -= this.fallVelocity * dt;
       this.player.position.copy(this.position);
-      // Tumble rotation
-      this.player.rotation.x += dt * 3;
-      this.player.rotation.z += dt * 4;
 
-      if (this.fallTimer >= FALL_DURATION) {
-        this.state = "dead";
-        this.audioPlay("death");
-        this.onEvent({ type: "death", gems: this.gemsCollected });
+      if (!this._fallNoTumble) {
+        // Tumble rotation
+        this.player.rotation.x += dt * 3;
+        this.player.rotation.z += dt * 4;
+      }
+
+      // Check if player landed on ground (y <= 0)
+      if (this.position.y <= 0) {
+        // Landed on ground - check if it's valid ground
+        if (this._fallingOverGround) {
+          // Was over ground - survive, resume playing
+          this.position.y = 0;
+          this.player.position.copy(this.position);
+          this.state = "playing";
+          this._offPathTimer = 0;
+          this.fallVelocity = 0;
+          this.fallTimer = 0;
+          this.player.rotation.set(0, 0, 0);
+          this._fallingOverGround = false;
+          this._fallNoTumble = false;
+          this.onEvent({ type: "drop-land", position: this.position.clone() });
+          return;
+        }
+      }
+
+      // Check for death conditions
+      if (this._fallingOverGround) {
+        // Was over ground but fell past it - check grace depth
+        if (this.position.y < this._fallGraceDepth) {
+          // Fell too far below ground - die
+          this.state = "dead";
+          this.audioPlay("death");
+          this.onEvent({ type: "death", gems: this.gemsCollected });
+        }
+      } else {
+        // Was never over ground - die after FALL_DURATION
+        if (this.fallTimer >= FALL_DURATION) {
+          this.state = "dead";
+          this.audioPlay("death");
+          this.onEvent({ type: "death", gems: this.gemsCollected });
+        }
       }
 
     } else if (this.state === "dead") {
@@ -1468,6 +1587,16 @@ export class DancingLineGame {
   }
 
   _updateCamera(dt) {
+    if (this._camRotating) {
+      this._updateCameraRotation(dt);
+      if (this.dirLight) {
+        this.dirLight.position.set(this.position.x + 20, 30, this.position.z + 12);
+        this.dirLight.target.position.copy(this.position);
+        this.dirLight.target.updateMatrixWorld();
+      }
+      return;
+    }
+
     const targetPos = new THREE.Vector3(
       this.position.x + CAM_OFFSET.x,
       CAM_OFFSET.y,
@@ -1485,6 +1614,136 @@ export class DancingLineGame {
       this.dirLight.position.set(this.position.x + 20, 30, this.position.z + 12);
       this.dirLight.target.position.copy(this.position);
       this.dirLight.target.updateMatrixWorld();
+    }
+  }
+
+  _startCameraRotation(dir) {
+    const cr = this.cameraRotation;
+    if (!cr || this._camRotating) return;
+
+    // Point A: player current position
+    this._camRotCenterA.set(this.position.x, this.position.y, this.position.z);
+    // Point B: player position projected forward
+    const forwardDist = 2.0;
+    this._camRotCenterB.set(
+      this.position.x + this.direction.x * forwardDist,
+      this.position.y,
+      this.position.z + this.direction.z * forwardDist
+    );
+    // Midpoint
+    this._camRotMidpoint.lerpVectors(this._camRotCenterA, this._camRotCenterB, 0.5);
+    // Radius = distance from current camera to midpoint
+    this._camRotRadius = this._camPos.distanceTo(this._camRotMidpoint);
+    // Direction and duration
+    this._camRotAxis = dir;
+    this._camRotAngle = 0;
+    this._camRotElapsed = 0;
+    this._camRotDuration = cr.duration || 4.0;
+    this._camRotSpeed = 360 / this._camRotDuration;
+    this._camRotating = true;
+  }
+
+  _updateCameraRotation(dt) {
+    if (!this._camRotating) return;
+    this._camRotElapsed += dt;
+    const advance = this._camRotSpeed * dt * this._camRotAxis;
+    this._camRotAngle += advance;
+    this._camRotAngle = ((this._camRotAngle % 360) + 360) % 360;
+
+    // Calculate center point C on segment AB based on angle
+    let cx, cz;
+    if (this._camRotAngle <= 180) {
+      const t = this._camRotAngle / 180;
+      cx = this._camRotCenterA.x + (this._camRotCenterB.x - this._camRotCenterA.x) * t;
+      cz = this._camRotCenterA.z + (this._camRotCenterB.z - this._camRotCenterA.z) * t;
+    } else {
+      const t = (this._camRotAngle - 180) / 180;
+      cx = this._camRotCenterB.x + (this._camRotCenterA.x - this._camRotCenterB.x) * t;
+      cz = this._camRotCenterB.z + (this._camRotCenterA.z - this._camRotCenterB.z) * t;
+    }
+
+    const orbitCenter = new THREE.Vector3(cx, this.position.y, cz);
+    const rad = this._camRotAngle * Math.PI / 180;
+    const camX = orbitCenter.x + this._camRotRadius * Math.cos(rad);
+    const camZ = orbitCenter.z + this._camRotRadius * Math.sin(rad);
+    this.camera.position.set(camX, orbitCenter.y + 5, camZ);
+    this.camera.lookAt(this.position.x, this.position.y, this.position.z);
+
+    if (this._camRotElapsed >= this._camRotDuration) {
+      this._camRotating = false;
+      // Snap back to normal follow
+      this._camPos.set(
+        this.position.x + CAM_OFFSET.x,
+        CAM_OFFSET.y,
+        this.position.z + CAM_OFFSET.z
+      );
+    }
+  }
+
+  _startDrop(dropInfo) {
+    this._dropState = dropInfo.type === "float" ? "float" : "normal";
+    this._dropProgress = 0;
+    this._dropStartY = this.position.y;
+    this._dropTargetY = dropInfo.targetY != null ? dropInfo.targetY : -2;
+    this._dropAxis = this.direction.x !== 0 ? "x" : "z";
+    this._dropDirection = this.direction.x !== 0 ? Math.sign(this.direction.x) : Math.sign(this.direction.z);
+    this._dropDuration = dropInfo.type === "float" ? 0.8 : (dropInfo.duration || 0.6);
+    // For normal drop: fall straight down
+    // For float drop: arc up then down
+    if (this._dropState === "float") {
+      // Float: start by moving up
+      this._dropVelocity = -DROP_SPEED_FALL * 1.5; // negative = upward
+    } else {
+      this._dropVelocity = 0;
+    }
+  }
+
+  _updateDrop(dt) {
+    if (this._dropState === "none") return;
+
+    this._dropProgress += dt / this._dropDuration;
+    if (this._dropProgress > 1) this._dropProgress = 1;
+
+    const t = this._dropProgress;
+    const speed = this.level.tempo * this.speedMult;
+
+    if (this._dropState === "normal") {
+      // Normal drop: fall straight down with slight forward momentum
+      this._dropVelocity += DROP_GRAVITY * dt;
+      this.position.y -= this._dropVelocity * dt;
+      // Forward movement at reduced speed
+      this.position.x += this.direction.x * speed * 0.3 * dt;
+      this.position.z += this.direction.z * speed * 0.3 * dt;
+    } else if (this._dropState === "float") {
+      // Float: arc up then fall
+      if (t < 0.4) {
+        // Up phase
+        const upT = t / 0.4;
+        const peakHeight = this._dropStartY + 2.5;
+        this.position.y = this._dropStartY + (peakHeight - this._dropStartY) * upT;
+      } else {
+        // Fall phase
+        const fallT = (t - 0.4) / 0.6;
+        const peakHeight = this._dropStartY + 2.5;
+        this.position.y = peakHeight + (this._dropStartY - peakHeight) * fallT;
+      }
+      // Forward movement
+      this.position.x += this.direction.x * speed * 0.5 * dt;
+      this.position.z += this.direction.z * speed * 0.5 * dt;
+    }
+
+    this.player.position.copy(this.position);
+
+    if (this._dropProgress >= 1) {
+      // Drop complete, resume playing
+      this.position.y = this._dropTargetY;
+      this.player.position.copy(this.position);
+      this._dropState = "none";
+      this._dropVelocity = 0;
+      this._dropProgress = 0;
+      this._lastOnPathPos = this.position.clone();
+      this._offPathTimer = 0;
+      this.onEvent({ type: "drop-land", position: this.position.clone() });
     }
   }
 }
