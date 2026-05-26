@@ -719,11 +719,13 @@ function rebuildPath() {
 // For edit mode: build full path from loaded segments
 let editPathMesh = null;
 function rebuildEditPath() {
-  if (editPathMesh) {
-    pathGroup.remove(editPathMesh);
-    editPathMesh.geometry.dispose();
-    editPathMesh = null;
+  // Clear previous path meshes
+  while (pathGroup.children.length) {
+    const c = pathGroup.children[0];
+    pathGroup.remove(c);
+    if (c.geometry) c.geometry.dispose();
   }
+  editPathMesh = null;
   if (editSegments.length === 0) return;
   const geoms = [];
   let dx = 0, dz = 0;
@@ -822,6 +824,28 @@ continueBtn.addEventListener("click", () => {
     outputEl.classList.remove("active");
     editorEl.classList.remove("active");
     setupEl.classList.add("hidden");
+    startEditMode();
+  } catch (e) {
+    alert("Failed to load level for editing: " + e.message);
+  }
+});
+
+continueBtn.addEventListener("click", () => {
+  // Load current JSON into edit mode
+  try {
+    const data = JSON.parse(jsonOut.value);
+    editLevelData = data;
+    editSegments = data.segments.map(s => ({
+      axis: s.axis || "x",
+      length: s.length || 1,
+      width: s.width != null ? s.width : 1
+    }));
+    // Ensure start data is preserved
+    if (!editLevelData.start) editLevelData.start = { x: 0, z: 0, dir: "x" };
+    outputEl.classList.remove("active");
+    editorEl.classList.remove("active");
+    setupEl.classList.add("hidden");
+    editorMode = "edit";
     startEditMode();
   } catch (e) {
     alert("Failed to load level for editing: " + e.message);
@@ -936,6 +960,8 @@ function startNewLevel() {
 
 function startEditMode() {
   editorMode = "edit";
+  setupEl.classList.add("hidden");
+  editPasteModal.classList.remove("active");
   // Use settings from level or defaults
   bgColor = editLevelData.theme?.sky || "#0a1f23";
   pathColor = editLevelData.theme?.tileTop || "#52c5a0";
@@ -969,6 +995,25 @@ function startEditMode() {
     emissiveIntensity: 0.4,
     roughness: 0.45,
   });
+  livePathMaterial = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(pathColor),
+    roughness: 0.8,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+  });
+
+  // Clear any previous scene objects
+  while (trailGroup.children.length) {
+    const c = trailGroup.children[0];
+    trailGroup.remove(c);
+    if (c.geometry) c.geometry.dispose();
+  }
+  while (pathGroup.children.length) {
+    const c = pathGroup.children[0];
+    pathGroup.remove(c);
+    if (c.geometry) c.geometry.dispose();
+  }
 
   rebuildEditPath();
 
@@ -1047,9 +1092,6 @@ function onKey(e) {
     } else if (e.code === "KeyW") {
       e.preventDefault();
       toggleFloatDrop();
-    } else if (e.code === "KeyE") {
-      e.preventDefault();
-      if (!camRotating) startCamRotate(e.shiftKey ? -1 : 1);
     } else if (e.key === "Escape") {
       finish();
     }
@@ -1376,18 +1418,10 @@ function loopEditMode(dt) {
     }
 
     // Update player position
-    const seg2 = editSegments[editSegIdx] || seg;
-    const dx = seg2.axis === "x" ? editSegProgress : 0;
-    const dz = seg2.axis === "z" ? editSegProgress : 0;
-    // pos was already advanced by commitEditSegment for previous segments
-    // Calculate current head position
-    let headX = pos.x, headZ = pos.z;
-    for (let i = 0; i < editSegIdx; i++) {
-      headX += editSegments[i].axis === "x" ? editSegments[i].length : 0;
-      headZ += editSegments[i].axis === "z" ? editSegments[i].length : 0;
-    }
-    headX += seg2.axis === "x" ? editSegProgress : 0;
-    headZ += seg2.axis === "z" ? editSegProgress : 0;
+    // pos already marks the start of segment editSegIdx, so head = pos + progress within segment
+    const seg2 = editSegments[editSegIdx];
+    const headX = pos.x + (seg2.axis === "x" ? editSegProgress : 0);
+    const headZ = pos.z + (seg2.axis === "z" ? editSegProgress : 0);
 
     playerMesh.position.set(headX, 0.14, headZ);
 
