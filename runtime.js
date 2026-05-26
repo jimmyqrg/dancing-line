@@ -971,9 +971,16 @@ export class DancingLineGame {
         this._startCameraRotation(e.shiftKey ? -1 : 1);
       }
     };
-  
+
+    this._onKeyUp = (e) => {
+      if (e.code === "KeyE" && this.cameraRotation) {
+        this._endCameraRotation();
+      }
+    };
+
     this.canvas.addEventListener("pointerdown", this._onPointerDown, { passive: false });
     window.addEventListener("keydown", this._onKeyDown, { passive: false });
+    window.addEventListener("keyup", this._onKeyUp, { passive: false });
   }
 
   start() {
@@ -1323,6 +1330,7 @@ export class DancingLineGame {
     this.music.destroy();
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("keydown", this._onKeyDown);
+    window.removeEventListener("keyup", this._onKeyUp);
     this.canvas.removeEventListener("pointerdown", this._onPointerDown);
     if (this.composer) { this.composer.dispose(); this.composer = null; }
     if (this._anim && this._anim.overlay) {
@@ -1677,6 +1685,16 @@ export class DancingLineGame {
         CAM_OFFSET.y,
         this.position.z + CAM_OFFSET.z
       );
+    }
+  }
+
+  _endCameraRotation() {
+    if (!this._camRotating) return;
+    // Calculate actual duration from elapsed time
+    this._camRotDuration = this._camRotElapsed;
+    // Recalculate speed so it stops at current angle
+    if (this._camRotElapsed > 0) {
+      this._camRotSpeed = (this._camRotAngle / this._camRotElapsed) * this._camRotAxis;
     }
   }
 

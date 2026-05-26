@@ -577,17 +577,26 @@ let dropDirection = 1;
 
 // --- Camera rotation state ---
 let camRotating = false;
+let camRotActive = false; // true while E is held
 let camRotAngle = 0;       // 0 to 360
 let camRotSpeed = 0;       // degrees per second (calculated from duration)
 let camRotDuration = 0;   // total duration in seconds
 let camRotElapsed = 0;
 let camRotAxis = 1;       // 1 = CW, -1 = CCW
+let camRotStartSegIdx = 0;
+let camRotStartTime = 0;
 // Camera rotation center slides between A (player) and B (player forward)
 // At 0°: center = A, at 180°: center = B
 let camRotCenterA = new THREE.Vector3(); // player current
 let camRotCenterB = new THREE.Vector3(); // player forward
 let camRotRadius = 0;
 let camRotMidpoint = new THREE.Vector3(); // midpoint of AB
+
+// --- Recording state (for NEW mode) ---
+let cameraRotations = []; // { segIdx, startOffset, duration, direction }
+let drops = []; // { segIdx, type, targetY }
+let pendingDrop = null; // drop to record when turn happens
+let pendingCamRot = null; // camera rotation to record when E released
 
 // --- Three.js scene ---
 let renderer, scene, camera;
@@ -946,14 +955,22 @@ function startNewLevel() {
   // Reset drop/camera
   dropState = "none";
   camRotating = false;
+  camRotActive = false;
   editAutoPlaying = false;
   autoplayToggle.classList.remove("active");
+
+  // Reset recording state
+  cameraRotations = [];
+  drops = [];
+  pendingDrop = null;
+  pendingCamRot = null;
 
   initLiveMeshes();
 
   running = true;
   canvasEl.addEventListener("pointerdown", onTap);
   window.addEventListener("keydown", onKey);
+  window.addEventListener("keyup", onKeyUp);
   lastTime = performance.now();
   requestAnimationFrame(loop);
 }
@@ -1045,6 +1062,7 @@ function startEditMode() {
 
   dropState = "none";
   camRotating = false;
+  camRotActive = false;
   editAutoPlaying = false;
   autoplayToggle.classList.remove("active");
 
@@ -1053,8 +1071,25 @@ function startEditMode() {
   running = true;
   canvasEl.addEventListener("pointerdown", onTap);
   window.addEventListener("keydown", onKey);
+  window.addEventListener("keyup", onKeyUp);
   lastTime = performance.now();
   requestAnimationFrame(loop);
+}
+
+function onKeyUp(e) {
+  if (!running) return;
+  if (e.code === "KeyE" && camRotActive) {
+    // End camera rotation recording
+    if (pendingCamRot) {
+      pendingCamRot.duration = (performance.now() / 1000) - pendingCamRot.startTime;
+      if (pendingCamRot.duration > 0.1) {
+        cameraRotations.push(pendingCamRot);
+      }
+      pendingCamRot = null;
+    }
+    camRotating = false;
+    camRotActive = false;
+  }
 }
 
 function updateControlsHintNew() {
@@ -1067,6 +1102,8 @@ function updateControlsHintEdit() {
 
 function onTap(e) {
   if (e.target && e.target.closest("button")) return;
+  // Only trigger turn in NEW mode, not EDIT mode
+  if (editorMode !== "new") return;
   turn();
 }
 
@@ -1080,9 +1117,45 @@ function onKey(e) {
     } else if (e.key >= "0" && e.key <= "9") {
       currentWidth = parseInt(e.key);
       widthDisplay.textContent = "Width: " + currentWidth + " (" + widthScale(currentWidth).toFixed(1) + "x)";
+    } else if (e.code === "KeyE") {
+      e.preventDefault();
+      // Start camera rotation recording (hold E to rotate)
+      if (!camRotActive && !camRotating) {
+        camRotActive = true;
+        camRotating = true;
+        camRotElapsed = 0;
+        camRotAxis = e.shiftKey ? -1 : 1;
+        camRotDuration = 9999; // will be set on release
+        // Record which segment we're on when rotation starts
+        const currentSegIdx = (editorMode === "edit") ? editSegIdx : segments.length;
+        pendingCamRot = {
+          segIdx: currentSegIdx,
+          startOffset: editorMode === "edit" ? editSegProgress : currentSegLength,
+          startTime: performance.now() / 1000,
+          direction: camRotAxis,
+          duration: 0
+        };
+        startCamRotate(camRotAxis);
+      }
+    } else if (e.code === "KeyQ") {
+      e.preventDefault();
+      // Toggle normal drop recording
+      if (pendingDrop && pendingDrop.type === "normal") {
+        pendingDrop = null;
+      } else {
+        pendingDrop = { type: "normal" };
+      }
+    } else if (e.code === "KeyW") {
+      e.preventDefault();
+      // Toggle float drop recording
+      if (pendingDrop && pendingDrop.type === "float") {
+        pendingDrop = null;
+      } else {
+        pendingDrop = { type: "float" };
+      }
     } else if (e.key === "Escape") finish();
   } else {
-    // EDIT mode: J/K/Space = turn, Q = normal drop, W = float drop, E = camera rotate
+    // EDIT mode: J/K/Space = turn, Q = normal drop, W = float drop
     if (e.code === "KeyJ" || e.code === "KeyK" || e.code === "Space" || e.type === "touchstart") {
       e.preventDefault();
       turn();
@@ -1104,6 +1177,11 @@ function turn() {
   if (dropState !== "none") return;
 
   if (editorMode === "new") {
+    // Record pending drop to the segment that just ended
+    if (pendingDrop) {
+      drops.push({ segIdx: segments.length - 1, type: pendingDrop.type });
+      pendingDrop = null;
+    }
     commitSegment();
     direction = direction === "x" ? "z" : "x";
   } else {
@@ -1180,16 +1258,18 @@ function toggleFloatDrop() {
 
 // --- Camera rotation ---
 function startCamRotate(dir) {
-  if (editSegIdx >= editSegments.length) return;
-  const seg = editSegments[editSegIdx];
+  const currentSegIdx = editorMode === "edit" ? editSegIdx : segments.length;
+  const currentSeg = editorMode === "edit" ? editSegments[editSegIdx] : (segments.length > 0 ? segments[segments.length - 1] : null);
+  if (!currentSeg && editorMode === "edit") return;
   // Point A: player current position
   camRotCenterA.set(pos.x, 0.14, pos.z);
   // Point B: slightly forward along current segment direction
   const forwardDist = 2.0; // how far ahead "B" is
+  const axis = currentSeg ? currentSeg.axis : "x";
   camRotCenterB.set(
-    pos.x + (seg.axis === "x" ? forwardDist : 0),
+    pos.x + (axis === "x" ? forwardDist : 0),
     0.14,
-    pos.z + (seg.axis === "z" ? forwardDist : 0)
+    pos.z + (axis === "z" ? forwardDist : 0)
   );
   // Midpoint
   camRotMidpoint.lerpVectors(camRotCenterA, camRotCenterB, 0.5);
@@ -1200,9 +1280,9 @@ function startCamRotate(dir) {
   camRotAxis = dir;
   camRotAngle = 0;
   camRotElapsed = 0;
-  // Duration to complete 360°: 4 seconds
-  camRotDuration = 4.0;
-  camRotSpeed = 360 / camRotDuration;
+  // Duration - will be set by actual elapsed time on release
+  camRotDuration = 9999;
+  camRotSpeed = 360 / 4; // placeholder, actual speed based on release duration
   camRotating = true;
 }
 
@@ -1233,7 +1313,7 @@ function updateCamRotate(dt) {
   const camZ = orbitCenter.z + camRotRadius * Math.sin(rad);
   camera.position.set(camX, orbitCenter.y + 5, camZ);
   camera.lookAt(pos.x, 0.14, pos.z);
-  if (camRotElapsed >= camRotDuration) {
+  if (camRotElapsed >= camRotDuration && camRotDuration < 9999) {
     camRotating = false;
   }
 }
@@ -1243,6 +1323,7 @@ async function finish() {
   if (musicAudio) { musicAudio.pause(); musicAudio = null; }
   canvasEl.removeEventListener("pointerdown", onTap);
   window.removeEventListener("keydown", onKey);
+  window.removeEventListener("keyup", onKeyUp);
   destroyScene();
   editorEl.classList.remove("active");
 
@@ -1299,12 +1380,26 @@ function buildEffects() {
 }
 
 async function buildJSON() {
-  const segs = segments.map(s => ({ axis: s.axis, length: Math.round(s.length * 10) / 10, width: s.width }));
+  const segs = segments.map((s, i) => {
+    const seg = { axis: s.axis, length: Math.round(s.length * 10) / 10, width: s.width };
+    // Attach drops to segment
+    const drop = drops.find(d => d.segIdx === i);
+    if (drop) seg.drop = { type: drop.type };
+    // Attach camera rotation start to segment
+    const camRot = cameraRotations.find(c => c.segIdx === i);
+    if (camRot) seg.camRot = { startOffset: camRot.startOffset, duration: camRot.duration, direction: camRot.direction };
+    return seg;
+  });
+
+  // Calculate audio delay: time for player to traverse starting straight
+  const startLength = parseFloat(startLengthEl.value) || 8;
+  const audioDelay = speed > 0 ? -(startLength / speed) : 0;
+
   const result = {
     name: "Custom Level",
     tile: 1.0,
     tempo: speed,
-    audioDelay: parseFloat(audioDelayEl.value) || 0,
+    audioDelay: audioDelay,
     trailWidth: 0.32,
     glow: enableGlowEl.checked,
     effects: buildEffects(),
