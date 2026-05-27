@@ -648,7 +648,7 @@ function createParticles(type, count, heavy) {
       scene.add(mesh);
       const pos = spawnAround();
       mesh.position.set(pos.x, pos.y, pos.z);
-      rainParticles.push({ mesh, vy: heavy ? -(20 + Math.random() * 15) : -(10 + Math.random() * 8) });
+      rainParticles.push({ mesh, vy: heavy ? -(20 + Math.random() * 15) : -(10 + Math.random() * 8), vx: 0, vz: 0 });
     }
   } else if (type === "dust") {
     const dustColor = 0xbebebe;
@@ -1120,7 +1120,15 @@ function startEditMode() {
   currentSegLength = 0;
   widthDisplay.textContent = "Width: 1 (1.0x)";
 
-  initScene(bgColor, pathColor, lineColor);
+  initScene(bgColor, pathColor, lineColor, enableGlowEl.checked ? 1.2 : 0.55);
+
+  // Handle fog from level data
+  if (editLevelData.effects?.fog) {
+    const fx = editLevelData.effects.fog;
+    scene.fog = new THREE.Fog(fx.color || bgColor, fx.near || 30, fx.far || 120);
+  } else {
+    scene.fog = new THREE.Fog(bgColor, 30, 120);
+  }
 
   pathMaterial = new THREE.MeshStandardMaterial({
     color: new THREE.Color(pathColor),
@@ -1226,16 +1234,25 @@ function startEditMode() {
 function onKeyUp(e) {
   if (!running) return;
   if (e.code === "KeyE" && camRotActive) {
-    if (camRotating && pendingCamRot) {
-      pendingCamRot.duration = (performance.now() / 1000) - pendingCamRot.startTime;
-      if (pendingCamRot.duration > 0.1) {
-        cameraRotations.push(pendingCamRot);
+    if (camRotating) {
+      if (editorMode === "new" && pendingCamRot) {
+        pendingCamRot.duration = (performance.now() / 1000) - pendingCamRot.startTime;
+        if (pendingCamRot.duration > 0.1) {
+          cameraRotations.push(pendingCamRot);
+        }
+        pendingCamRot = null;
+      } else if (editorMode === "edit" && camRotStartTime > 0) {
+        const elapsed = (performance.now() / 1000) - camRotStartTime;
+        if (elapsed > 0.1) {
+          camRotDuration = elapsed;
+          camRotSpeed = 360 / camRotDuration;
+        }
       }
-      pendingCamRot = null;
+      camRotating = false;
     }
-    camRotating = false;
     camRotActive = false;
   }
+  // Q release handling removed - drops complete naturally via updateDrop or Q press
 }
 
 function updateControlsHintNew() {
@@ -1300,6 +1317,7 @@ function onKey(e) {
         dropState = "normal";
         dropProgress = 0;
         dropStartY = playerY;
+        dropTargetY = playerY; // Will be corrected when drop ends
         dropAxis = direction;
         dropDirection = 1;
       } else if (dropState === "normal") {
@@ -1333,6 +1351,7 @@ function onKey(e) {
         dropState = "float";
         dropProgress = 0;
         dropStartY = playerY;
+        dropTargetY = playerY; // Will be corrected when drop ends
         dropAxis = direction;
         dropDirection = 1;
       } else if (dropState === "float") {
@@ -1383,26 +1402,6 @@ function onKey(e) {
   }
 }
 
-function onKeyUp(e) {
-  if (!running) return;
-  if (e.code === "KeyE" && camRotActive) {
-    if (camRotating) {
-      // In edit mode, calculate actual duration for the rotation
-      if (editorMode === "edit" && camRotStartTime > 0) {
-        const elapsed = (performance.now() / 1000) - camRotStartTime;
-        if (elapsed > 0.1) {
-          camRotDuration = elapsed;
-          camRotSpeed = 360 / camRotDuration;
-        }
-      }
-      camRotating = false;
-    }
-    camRotActive = false;
-  }
-  // Note: Q release handling removed - drops complete naturally via updateDrop
-  // When Q is pressed again during an active drop, it ends the drop at current position
-}
-
 function turn() {
   if (!running) return;
   // Can't turn during drops
@@ -1441,7 +1440,6 @@ function commitSegment() {
   trailLastZ = pos.z;
   currentSegLength = 0;
   segCountEl.textContent = "Segments: " + segments.length;
-  rebuildPath();
 }
 
 function commitEditSegment() {
@@ -1638,8 +1636,9 @@ async function buildJSON() {
 
   // Calculate audio delay: time for player to traverse starting straight
   const startLength = parseFloat(startLengthEl.value) || 8;
-  // Starting platform delay: 2x the platform length / speed
-  const audioDelay = speed > 0 ? -(2 * startLength / speed) : 0;
+  // Starting platform delay: 2x the platform length / (tempo * speedMult)
+  const effectiveSpeed = speed * speedMult;
+  const audioDelay = effectiveSpeed > 0 ? -(2 * startLength / effectiveSpeed) : 0;
 
   const result = {
     name: "Custom Level",
