@@ -232,6 +232,10 @@
     <input type="number" id="player-speed" value="5" min="1" max="20" step="0.5">
   </div>
   <div class="setup-row">
+    <label>Speed Mult</label>
+    <input type="number" id="speed-mult" value="1" min="0.1" max="5" step="0.05">
+  </div>
+  <div class="setup-row">
     <label>Audio Delay</label>
     <input type="number" id="audio-delay" value="0" step="0.05" min="-2" max="2">
   </div>
@@ -411,6 +415,7 @@ const colLine = document.getElementById("col-line");
 const startLengthEl = document.getElementById("start-length");
 const startWidthEl = document.getElementById("start-width");
 const playerSpeedEl = document.getElementById("player-speed");
+const speedMultEl = document.getElementById("speed-mult");
 const audioDelayEl = document.getElementById("audio-delay");
 const enableGlowEl = document.getElementById("enable-glow");
 const musicSelect = document.getElementById("music-select");
@@ -478,7 +483,7 @@ function saveSettings() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       bg: colBg.value, path: colPath.value, line: colLine.value,
       startLength: startLengthEl.value, startWidth: startWidthEl.value,
-      speed: playerSpeedEl.value, audioDelay: audioDelayEl.value, glow: enableGlowEl.checked,
+      speed: playerSpeedEl.value, speedMult: speedMultEl.value, audioDelay: audioDelayEl.value, glow: enableGlowEl.checked,
       music: musicSelect.value === "__upload__" ? "" : musicSelect.value,
       fx: {
         fogOn: fxFogOn.checked, fogColor: fxFogColor.value,
@@ -505,6 +510,7 @@ function loadSettings() {
     if (d.startLength) startLengthEl.value = d.startLength;
     if (d.startWidth) startWidthEl.value = d.startWidth;
     if (d.speed) playerSpeedEl.value = d.speed;
+    if (d.speedMult) speedMultEl.value = d.speedMult;
     if (d.audioDelay != null) audioDelayEl.value = d.audioDelay;
     if (d.glow != null) enableGlowEl.checked = d.glow;
     if (d.music) musicSelect.value = d.music;
@@ -557,6 +563,7 @@ let direction = "x";
 let pos = { x: 0, z: 0 };
 let currentSegLength = 0;
 let speed = 5;
+let speedMult = 1; // 1 = normal speed, 0.5 = half, 2 = double
 let musicUrl = "";
 let musicAudio = null;
 
@@ -571,9 +578,11 @@ let dropState = "none";
 let dropProgress = 0;    // 0 to 1, progress of drop
 let dropTotalTime = 0.6; // seconds for normal drop
 let floatTotalTime = 0.8; // seconds for float drop
-let dropStartPos = { x: 0, z: 0, y: 0 };
+let dropStartY = 0.14;   // starting Y when drop began
+let dropTargetY = -2;    // target Y when drop lands
 let dropAxis = "x";
 let dropDirection = 1;
+let playerY = 0.14;      // current player Y (tracks vertical position)
 
 // --- Camera rotation state ---
 let camRotating = false;
@@ -591,6 +600,108 @@ let camRotCenterA = new THREE.Vector3(); // player current
 let camRotCenterB = new THREE.Vector3(); // player forward
 let camRotRadius = 0;
 let camRotMidpoint = new THREE.Vector3(); // midpoint of AB
+let camRotTriggeredForIdx = -1; // edit mode segment index for which auto rotation was triggered
+
+// --- Particle state ---
+let snowParticles = null;
+let rainParticles = null;
+let dustParticles = null;
+
+function clearParticles() {
+  [snowParticles, rainParticles, dustParticles].forEach(arr => {
+    if (arr) {
+      arr.forEach(p => { scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); });
+    }
+  });
+  snowParticles = null;
+  rainParticles = null;
+  dustParticles = null;
+}
+
+function createParticles(type, count, heavy) {
+  clearParticles();
+  const px = playerMesh ? playerMesh.position.x : 0;
+  const pz = playerMesh ? playerMesh.position.z : 0;
+  const spawnAround = (py) => {
+    py = py || 10;
+    return { x: px + (Math.random() - 0.5) * 30, y: py + Math.random() * 15, z: pz + (Math.random() - 0.5) * 30 };
+  };
+  if (type === "snow") {
+    const snowMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+    snowParticles = [];
+    for (let i = 0; i < count; i++) {
+      const r = 0.05 + Math.random() * 0.1;
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 4, 4), snowMat.clone());
+      mesh.visible = true;
+      scene.add(mesh);
+      const pos = spawnAround();
+      mesh.position.set(pos.x, pos.y, pos.z);
+      snowParticles.push({ mesh, vx: (Math.random() - 0.5) * 2, vy: -(1 + Math.random() * 2), vz: (Math.random() - 0.5) * 2 });
+    }
+  } else if (type === "rain") {
+    const rainMat = new THREE.MeshBasicMaterial({ color: 0xaaccdd, transparent: true, opacity: heavy ? 0.7 : 0.5 });
+    rainParticles = [];
+    for (let i = 0; i < count; i++) {
+      const len = heavy ? 0.3 + Math.random() * 0.5 : 0.15 + Math.random() * 0.3;
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, len, 4), rainMat.clone());
+      mesh.visible = true;
+      scene.add(mesh);
+      const pos = spawnAround();
+      mesh.position.set(pos.x, pos.y, pos.z);
+      rainParticles.push({ mesh, vy: heavy ? -(20 + Math.random() * 15) : -(10 + Math.random() * 8) });
+    }
+  } else if (type === "dust") {
+    const dustColor = 0xbebebe;
+    dustParticles = [];
+    for (let i = 0; i < count; i++) {
+      const size = 0.04 + Math.random() * 0.08;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), new THREE.MeshBasicMaterial({ color: dustColor, transparent: true, opacity: 0.4 + Math.random() * 0.3 }));
+      mesh.visible = true;
+      scene.add(mesh);
+      const pos = spawnAround(5);
+      mesh.position.set(pos.x, pos.y, pos.z);
+      dustParticles.push({ mesh, vx: -(2 + Math.random() * 2), vy: 0, vz: (Math.random() - 0.5) * 0.5 });
+    }
+  }
+}
+
+function updateParticles(dt) {
+  const px = playerMesh ? playerMesh.position.x : 0;
+  const pz = playerMesh ? playerMesh.position.z : 0;
+  if (snowParticles) {
+    snowParticles.forEach(p => {
+      p.mesh.position.x += p.vx * dt;
+      p.mesh.position.y += p.vy * dt;
+      p.mesh.position.z += p.vz * dt;
+      if (p.mesh.position.y < -1) {
+        p.mesh.position.set(px + (Math.random() - 0.5) * 30, 10 + Math.random() * 15, pz + (Math.random() - 0.5) * 30);
+        p.vx = (Math.random() - 0.5) * 2;
+        p.vy = -(1 + Math.random() * 2);
+        p.vz = (Math.random() - 0.5) * 2;
+      }
+    });
+  }
+  if (rainParticles) {
+    rainParticles.forEach(p => {
+      p.mesh.position.y += p.vy * dt;
+      if (p.mesh.position.y < -1) {
+        p.mesh.position.set(px + (Math.random() - 0.5) * 30, 10 + Math.random() * 15, pz + (Math.random() - 0.5) * 30);
+      }
+    });
+  }
+  if (dustParticles) {
+    dustParticles.forEach(p => {
+      p.mesh.position.x += p.vx * dt;
+      p.mesh.position.y += p.vy * dt;
+      p.mesh.position.z += p.vz * dt;
+      if (p.mesh.position.x < px - 20 || p.mesh.position.x > px + 20 || p.mesh.position.z < pz - 20 || p.mesh.position.z > pz + 20) {
+        p.mesh.position.set(px + (Math.random() - 0.5) * 30, 5 + Math.random() * 5, pz + (Math.random() - 0.5) * 30);
+        p.vx = -(2 + Math.random() * 2);
+        p.vz = (Math.random() - 0.5) * 0.5;
+      }
+    });
+  }
+}
 
 // --- Recording state (for NEW mode) ---
 let cameraRotations = []; // { segIdx, startOffset, duration, direction }
@@ -613,7 +724,7 @@ function darken(hex, amount) {
   return "#" + [r, g, b].map(c => c.toString(16).padStart(2, "0")).join("");
 }
 
-function initScene(bgColor, pathColor, lineColor) {
+function initScene(bgColor, pathColor, lineColor, glowIntensity) {
   renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
   renderer.setPixelRatio(1);
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -622,7 +733,7 @@ function initScene(bgColor, pathColor, lineColor) {
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(bgColor);
-  scene.fog = new THREE.Fog(bgColor, 30, 120);
+  scene.fog = new THREE.Fog(bgColor, fxFogOn.checked ? parseFloat(fxFogNear.value) : 30, fxFogOn.checked ? parseFloat(fxFogFar.value) : 120);
 
   const hemi = new THREE.HemisphereLight(bgColor, darken(bgColor, 0.5), 0.6);
   scene.add(hemi);
@@ -652,8 +763,9 @@ function initScene(bgColor, pathColor, lineColor) {
   const playerMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(lineColor),
     emissive: new THREE.Color(lineColor),
-    emissiveIntensity: 0.4,
+    emissiveIntensity: glowIntensity,
     roughness: 0.45,
+    metalness: 0.1,
   });
   playerMesh = new THREE.Mesh(playerGeom, playerMat);
   playerMesh.castShadow = true;
@@ -672,6 +784,7 @@ function onResize() {
 
 function destroyScene() {
   window.removeEventListener("resize", onResize);
+  clearParticles();
   if (renderer) {
     renderer.dispose();
     scene.traverse(obj => {
@@ -751,24 +864,28 @@ function rebuildEditPath() {
   pathGroup.add(editPathMesh);
 }
 
-const TRAIL_W = 0.5;
-function addTrailSegment(fromX, fromZ, toX, toZ, isFirst) {
+const TRAIL_W = 0.32; // must match runtime.js trailWidth default
+const TRAIL_H = 0.35;
+function addTrailSegment(fromX, fromZ, toX, toZ, isFirst, height) {
   const dx = toX - fromX;
   const dz = toZ - fromZ;
   const len = Math.hypot(dx, dz);
   if (len < 0.01) return;
-  const ext = isFirst ? 0 : TRAIL_W / 2;
+  const w = widthScale(currentWidth);
+  const ext = isFirst ? 0 : w / 2;
   const totalLen = len + ext;
   const geom = new THREE.BoxGeometry(
-    Math.abs(dx) > Math.abs(dz) ? totalLen : TRAIL_W,
-    0.28,
-    Math.abs(dz) >= Math.abs(dx) ? totalLen : TRAIL_W
+    Math.abs(dx) > Math.abs(dz) ? totalLen : w,
+    TRAIL_H,
+    Math.abs(dz) >= Math.abs(dx) ? totalLen : w
   );
   const mesh = new THREE.Mesh(geom, trailMaterial);
   mesh.castShadow = true;
   const cx = (fromX + toX) / 2 - (Math.sign(dx) * ext / 2);
   const cz = (fromZ + toZ) / 2 - (Math.sign(dz) * ext / 2);
-  mesh.position.set(cx, 0.14, cz);
+  // Use height (playerY) if provided, otherwise default to ground level
+  const trailY = (height !== undefined ? height : 0) + TRAIL_H / 2 + 0.01;
+  mesh.position.set(cx, trailY, cz);
   trailGroup.add(mesh);
 }
 
@@ -879,6 +996,7 @@ function startNewLevel() {
   lineColor = colLine.value;
   const startLength = Math.max(1, parseInt(startLengthEl.value) || 8);
   speed = Math.max(0.5, Math.min(20, parseFloat(playerSpeedEl.value) || 5));
+  speedMult = Math.max(0.1, parseFloat(speedMultEl.value) || 1);
 
   if (musicSelect.value === "__upload__" && uploadedMusicBlob) {
     musicUrl = uploadedMusicBlob;
@@ -901,8 +1019,9 @@ function startNewLevel() {
   currentSegLength = 0;
   widthDisplay.textContent = "Width: " + currentWidth + " (" + widthScale(currentWidth).toFixed(1) + "x)";
 
-  initScene(bgColor, pathColor, lineColor);
+  initScene(bgColor, pathColor, lineColor, enableGlowEl.checked ? 1.2 : 0.55);
 
+  const glowIntensity = enableGlowEl.checked ? 1.2 : 0.55;
   pathMaterial = new THREE.MeshStandardMaterial({
     color: new THREE.Color(pathColor),
     roughness: 0.8,
@@ -923,8 +1042,9 @@ function startNewLevel() {
   trailMaterial = new THREE.MeshStandardMaterial({
     color: new THREE.Color(lineColor),
     emissive: new THREE.Color(lineColor),
-    emissiveIntensity: 0.4,
+    emissiveIntensity: glowIntensity,
     roughness: 0.45,
+    metalness: 0.1,
   });
 
   segments.push({ axis: "x", length: startLength, width: currentWidth });
@@ -949,6 +1069,7 @@ function startNewLevel() {
   if (musicAudio) { musicAudio.pause(); musicAudio = null; }
   if (musicUrl) {
     musicAudio = new Audio(musicUrl);
+    musicAudio.playbackRate = 1;
     musicAudio.play().catch(() => {});
   }
 
@@ -966,6 +1087,11 @@ function startNewLevel() {
   pendingCamRot = null;
 
   initLiveMeshes();
+
+  // Particles
+  if (fxParticles.value) {
+    createParticles(fxParticles.value, parseInt(fxParticlesCount.value) || 150, fxParticlesHeavy.checked);
+  }
 
   running = true;
   canvasEl.addEventListener("pointerdown", onTap);
@@ -1009,8 +1135,9 @@ function startEditMode() {
   trailMaterial = new THREE.MeshStandardMaterial({
     color: new THREE.Color(lineColor),
     emissive: new THREE.Color(lineColor),
-    emissiveIntensity: 0.4,
+    emissiveIntensity: enableGlowEl.checked ? 1.2 : 0.55,
     roughness: 0.45,
+    metalness: 0.1,
   });
   livePathMaterial = new THREE.MeshStandardMaterial({
     color: new THREE.Color(pathColor),
@@ -1039,6 +1166,16 @@ function startEditMode() {
 
   editSegIdx = 0;
   editSegProgress = 0;
+  // Load drops from JSON so they trigger at corners during playback
+  if (editLevelData && editLevelData.segments) {
+    drops = editLevelData.segments
+      .map((s, i) => s.drop ? { segIdx: i, type: s.drop.type, targetY: s.drop.targetY } : null)
+      .filter(d => d !== null);
+    // Load camera rotations from JSON
+    cameraRotations = editLevelData.segments
+      .map((s, i) => s.camRot ? { segIdx: i, startOffset: s.camRot.startOffset, duration: s.camRot.duration, direction: s.camRot.direction } : null)
+      .filter(c => c !== null);
+  }
   // Advance to start of first segment
   if (editSegments.length > 0) {
     const seg = editSegments[0];
@@ -1057,16 +1194,26 @@ function startEditMode() {
   if (musicAudio) { musicAudio.pause(); musicAudio = null; }
   if (musicUrl) {
     musicAudio = new Audio(musicUrl);
+    musicAudio.playbackRate = 1;
     musicAudio.play().catch(() => {});
   }
 
   dropState = "none";
   camRotating = false;
   camRotActive = false;
+  camRotTriggeredForIdx = -1;
   editAutoPlaying = false;
   autoplayToggle.classList.remove("active");
 
   initLiveMeshes();
+
+  // Particles (from loaded level data)
+  if (editLevelData.effects?.particles) {
+    const pt = editLevelData.effects.particles;
+    createParticles(pt.type, pt.count || 150, pt.heavy || false);
+  } else if (fxParticles.value) {
+    createParticles(fxParticles.value, parseInt(fxParticlesCount.value) || 150, fxParticlesHeavy.checked);
+  }
 
   running = true;
   canvasEl.addEventListener("pointerdown", onTap);
@@ -1079,8 +1226,7 @@ function startEditMode() {
 function onKeyUp(e) {
   if (!running) return;
   if (e.code === "KeyE" && camRotActive) {
-    // End camera rotation recording
-    if (pendingCamRot) {
+    if (camRotating && pendingCamRot) {
       pendingCamRot.duration = (performance.now() / 1000) - pendingCamRot.startTime;
       if (pendingCamRot.duration > 0.1) {
         cameraRotations.push(pendingCamRot);
@@ -1139,23 +1285,80 @@ function onKey(e) {
       }
     } else if (e.code === "KeyQ") {
       e.preventDefault();
-      // Toggle normal drop recording
-      if (pendingDrop && pendingDrop.type === "normal") {
-        pendingDrop = null;
-      } else {
-        pendingDrop = { type: "normal" };
+      // Normal drop: start or end drop
+      if (dropState === "none") {
+        // Start normal drop - first commit current segment
+        if (currentSegLength > 0.1) {
+          commitSegment();
+        }
+        // Record drop to the segment that just ended (if not already recorded)
+        const segIdx = segments.length - 1;
+        if (segIdx >= 0 && !drops.some(d => d.segIdx === segIdx)) {
+          drops.push({ segIdx, type: "normal", targetY: dropTargetY });
+        }
+        // Start drop animation
+        dropState = "normal";
+        dropProgress = 0;
+        dropStartY = playerY;
+        dropAxis = direction;
+        dropDirection = 1;
+      } else if (dropState === "normal") {
+        // End normal drop at current position
+        // Calculate current Y based on drop progress
+        const currentY = dropStartY + (dropTargetY - dropStartY) * dropProgress;
+        playerY = currentY;
+        dropTargetY = currentY;
+        dropState = "none";
+        dropProgress = 0;
+        playerMesh.position.set(pos.x, playerY, pos.z);
+        // Update the last drop entry's targetY
+        if (drops.length > 0) {
+          drops[drops.length - 1].targetY = currentY;
+        }
       }
     } else if (e.code === "KeyW") {
       e.preventDefault();
-      // Toggle float drop recording
-      if (pendingDrop && pendingDrop.type === "float") {
-        pendingDrop = null;
-      } else {
-        pendingDrop = { type: "float" };
+      // Float drop: start or end drop
+      if (dropState === "none") {
+        // Start float drop - first commit current segment
+        if (currentSegLength > 0.1) {
+          commitSegment();
+        }
+        // Record drop to the segment that just ended (if not already recorded)
+        const segIdx = segments.length - 1;
+        if (segIdx >= 0 && !drops.some(d => d.segIdx === segIdx)) {
+          drops.push({ segIdx, type: "float", targetY: dropTargetY });
+        }
+        // Start drop animation
+        dropState = "float";
+        dropProgress = 0;
+        dropStartY = playerY;
+        dropAxis = direction;
+        dropDirection = 1;
+      } else if (dropState === "float") {
+        // End float drop at current position
+        // Calculate current Y based on drop progress (same formula as updateDrop)
+        let currentY;
+        if (dropProgress < 0.4) {
+          currentY = dropStartY + (dropStartY + 2.5 - dropStartY) * (dropProgress / 0.4);
+        } else {
+          const fallT = (dropProgress - 0.4) / 0.6;
+          const peakY = dropStartY + 2.5;
+          currentY = peakY + (dropTargetY - peakY) * fallT;
+        }
+        playerY = currentY;
+        dropTargetY = currentY;
+        dropState = "none";
+        dropProgress = 0;
+        playerMesh.position.set(pos.x, playerY, pos.z);
+        // Update the last drop entry's targetY
+        if (drops.length > 0) {
+          drops[drops.length - 1].targetY = currentY;
+        }
       }
     } else if (e.key === "Escape") finish();
   } else {
-    // EDIT mode: J/K/Space = turn, Q = normal drop, W = float drop
+    // EDIT mode: J/K/Space = turn, Q = normal drop, W = float drop, E (hold) = camera rotate
     if (e.code === "KeyJ" || e.code === "KeyK" || e.code === "Space" || e.type === "touchstart") {
       e.preventDefault();
       turn();
@@ -1165,10 +1368,39 @@ function onKey(e) {
     } else if (e.code === "KeyW") {
       e.preventDefault();
       toggleFloatDrop();
+    } else if (e.code === "KeyE" && !camRotActive && !camRotating) {
+      e.preventDefault();
+      camRotActive = true;
+      camRotating = true;
+      camRotElapsed = 0;
+      camRotAxis = e.shiftKey ? -1 : 1;
+      camRotDuration = 9999;
+      camRotStartTime = performance.now() / 1000;
+      startCamRotate(camRotAxis);
     } else if (e.key === "Escape") {
       finish();
     }
   }
+}
+
+function onKeyUp(e) {
+  if (!running) return;
+  if (e.code === "KeyE" && camRotActive) {
+    if (camRotating) {
+      // In edit mode, calculate actual duration for the rotation
+      if (editorMode === "edit" && camRotStartTime > 0) {
+        const elapsed = (performance.now() / 1000) - camRotStartTime;
+        if (elapsed > 0.1) {
+          camRotDuration = elapsed;
+          camRotSpeed = 360 / camRotDuration;
+        }
+      }
+      camRotating = false;
+    }
+    camRotActive = false;
+  }
+  // Note: Q release handling removed - drops complete naturally via updateDrop
+  // When Q is pressed again during an active drop, it ends the drop at current position
 }
 
 function turn() {
@@ -1177,16 +1409,23 @@ function turn() {
   if (dropState !== "none") return;
 
   if (editorMode === "new") {
-    // Record pending drop to the segment that just ended
+    // Record pending drop to the segment that just ended (only if not already recorded)
     if (pendingDrop) {
-      drops.push({ segIdx: segments.length - 1, type: pendingDrop.type });
+      const segIdx = segments.length - 1;
+      const alreadyHasDrop = drops.some(d => d.segIdx === segIdx);
+      if (!alreadyHasDrop) {
+        drops.push({ segIdx, type: pendingDrop.type });
+      }
       pendingDrop = null;
     }
     commitSegment();
     direction = direction === "x" ? "z" : "x";
   } else {
-    // Edit mode: commit current segment and turn
-    commitEditSegment();
+    // Edit mode: only commit if we haven't already reached the end this frame
+    // loopEditMode handles commit at segment end, so avoid double-commit
+    if (editSegProgress < (editSegments[editSegIdx]?.length || 0)) {
+      commitEditSegment();
+    }
     direction = direction === "x" ? "z" : "x";
   }
 }
@@ -1197,7 +1436,7 @@ function commitSegment() {
   segments.push({ axis: direction, length: len, width: currentWidth });
   pos.x += direction === "x" ? len : 0;
   pos.z += direction === "z" ? len : 0;
-  addTrailSegment(trailLastX, trailLastZ, pos.x, pos.z);
+  addTrailSegment(trailLastX, trailLastZ, pos.x, pos.z, false, playerY);
   trailLastX = pos.x;
   trailLastZ = pos.z;
   currentSegLength = 0;
@@ -1228,32 +1467,38 @@ function commitEditSegment() {
 function toggleNormalDrop() {
   if (dropState !== "none") {
     // Cancel current drop
-    dropState = "none";
+    endDrop();
     return;
   }
   if (editSegIdx >= editSegments.length) return;
   // Start normal drop
   dropState = "normal";
   dropProgress = 0;
-  dropStartPos = { x: pos.x, z: pos.z, y: 0.14 };
+  dropStartY = playerY;
   const seg = editSegments[editSegIdx];
   dropAxis = seg.axis;
   dropDirection = 1; // forward direction
+  // Use targetY from drop data if available
+  const dropData = drops.find(d => d.segIdx === editSegIdx);
+  dropTargetY = dropData?.targetY ?? -2;
 }
 
 function toggleFloatDrop() {
   if (dropState !== "none") {
-    dropState = "none";
+    endDrop();
     return;
   }
   if (editSegIdx >= editSegments.length) return;
   // Float drop: leap up then fall
   dropState = "float";
   dropProgress = 0;
-  dropStartPos = { x: pos.x, z: pos.z, y: 0.14 };
+  dropStartY = playerY;
   const seg = editSegments[editSegIdx];
   dropAxis = seg.axis;
   dropDirection = 1;
+  // Use targetY from drop data if available
+  const dropData = drops.find(d => d.segIdx === editSegIdx);
+  dropTargetY = dropData?.targetY ?? -2;
 }
 
 // --- Camera rotation ---
@@ -1289,7 +1534,7 @@ function startCamRotate(dir) {
 function updateCamRotate(dt) {
   if (!camRotating) return;
   camRotElapsed += dt;
-  const advance = camRotSpeed * dt * camRotAxis;
+  const advance = camRotSpeed * dt * camRotAxis * speedMult;
   camRotAngle += advance;
   // Normalize to 0-360
   camRotAngle = ((camRotAngle % 360) + 360) % 360;
@@ -1384,7 +1629,7 @@ async function buildJSON() {
     const seg = { axis: s.axis, length: Math.round(s.length * 10) / 10, width: s.width };
     // Attach drops to segment
     const drop = drops.find(d => d.segIdx === i);
-    if (drop) seg.drop = { type: drop.type };
+    if (drop) seg.drop = { type: drop.type, targetY: drop.targetY };
     // Attach camera rotation start to segment
     const camRot = cameraRotations.find(c => c.segIdx === i);
     if (camRot) seg.camRot = { startOffset: camRot.startOffset, duration: camRot.duration, direction: camRot.direction };
@@ -1393,7 +1638,8 @@ async function buildJSON() {
 
   // Calculate audio delay: time for player to traverse starting straight
   const startLength = parseFloat(startLengthEl.value) || 8;
-  const audioDelay = speed > 0 ? -(startLength / speed) : 0;
+  // Starting platform delay: 2x the platform length / speed
+  const audioDelay = speed > 0 ? -(2 * startLength / speed) : 0;
 
   const result = {
     name: "Custom Level",
@@ -1443,6 +1689,8 @@ function loop(now) {
     loopEditMode(dt);
   }
 
+  updateParticles(dt);
+
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
@@ -1457,12 +1705,12 @@ function loopNewMode(dt) {
     return;
   }
 
-  currentSegLength += speed * dt;
+  currentSegLength += speed * speedMult * dt;
 
   const headX = pos.x + (direction === "x" ? currentSegLength : 0);
   const headZ = pos.z + (direction === "z" ? currentSegLength : 0);
 
-  playerMesh.position.set(headX, 0.14, headZ);
+  playerMesh.position.set(headX, playerY, headZ);
   updateLiveTrail(headX, headZ);
   updateLivePath(headX, headZ);
 
@@ -1502,6 +1750,16 @@ function loopEditMode(dt) {
         // Done!
         return;
       }
+      // Check for drop on this segment before turning
+      const dropForSeg = drops.find(d => d.segIdx === editSegIdx - 1);
+      if (dropForSeg && dropState === "none") {
+        dropState = dropForSeg.type;
+        dropProgress = 0;
+        dropStartY = playerY;
+        dropTargetY = dropForSeg.targetY ?? -2;
+        dropAxis = editSegments[editSegIdx - 1].axis;
+        dropDirection = 1;
+      }
       // Turn
       direction = direction === "x" ? "z" : "x";
       // Auto-play: automatically turn at corners
@@ -1520,6 +1778,17 @@ function loopEditMode(dt) {
 
     playerMesh.position.set(headX, 0.14, headZ);
 
+    // Check for automatic camera rotation trigger from JSON data
+    if (!camRotating && camRotTriggeredForIdx !== editSegIdx) {
+      const camRot = cameraRotations.find(c => c.segIdx === editSegIdx && editSegProgress >= c.startOffset);
+      if (camRot) {
+        camRotTriggeredForIdx = editSegIdx;
+        startCamRotate(camRot.direction);
+        camRotDuration = camRot.duration;
+        camRotSpeed = 360 / camRotDuration;
+      }
+    }
+
     if (!camRotating) {
       const targetPos = new THREE.Vector3(headX - 10, 8, headZ - 10);
       const targetLook = new THREE.Vector3(headX, 0, headZ);
@@ -1534,44 +1803,63 @@ function loopEditMode(dt) {
 
 function updateDrop(dt) {
   if (dropState === "none") return;
-  dropProgress += dt / (dropState === "normal" ? dropTotalTime : floatTotalTime);
+  dropProgress += dt / (dropState === "normal" ? dropTotalTime / speedMult : floatTotalTime / speedMult);
   if (dropProgress > 1) dropProgress = 1;
 
   const t = dropProgress;
   let y;
   if (dropState === "normal") {
-    // Fall down: y goes from 0.14 to -2.0
-    y = 0.14 + (0 - 0.14) * t;
+    // Normal drop: fall straight down from dropStartY to dropTargetY
+    // No forward movement - purely vertical
+    y = dropStartY + (dropTargetY - dropStartY) * t;
   } else if (dropState === "float") {
-    // Leap up then fall
+    // Float drop: leap up then fall (forward movement allowed)
     if (t < 0.4) {
-      // Up
-      y = 0.14 + (2.0 - 0.14) * (t / 0.4);
+      // Up phase
+      const upT = t / 0.4;
+      y = dropStartY + (dropStartY + 2.5 - dropStartY) * upT;
     } else {
-      // Down
-      const t2 = (t - 0.4) / 0.6;
-      y = 2.0 + (0.14 - 2.0) * t2;
+      // Down phase
+      const fallT = (t - 0.4) / 0.6;
+      const peakY = dropStartY + 2.5;
+      y = peakY + (dropTargetY - peakY) * fallT;
     }
+    // Float drops move forward
+    const dist = speed * dt * 0.5;
+    pos.x += dropAxis === "x" ? dropDirection * dist : 0;
+    pos.z += dropAxis === "z" ? dropDirection * dist : 0;
   }
 
-  // Move in drop direction
-  const dist = speed * dt * 0.5; // slower during drop
-  const newX = pos.x + (dropAxis === "x" ? dropDirection * dist : 0);
-  const newZ = pos.z + (dropAxis === "z" ? dropDirection * dist : 0);
-  pos.x = newX;
-  pos.z = newZ;
-
+  // Update player position
+  playerY = y;
   playerMesh.position.set(pos.x, y, pos.z);
 
   if (dropProgress >= 1) {
-    // Drop complete
-    const wasFloat = dropState === "float";
+    // Drop complete - auto-end the drop
+    playerY = dropTargetY;
+    // Call endDrop but only update drops array in new mode
+    if (editorMode === "new" && drops.length > 0) {
+      const lastDrop = drops[drops.length - 1];
+      lastDrop.targetY = dropTargetY;
+    }
     dropState = "none";
-    // Restore y
-    playerMesh.position.set(pos.x, 0.14, pos.z);
-    // In new mode: continue from drop end position
-    // In edit mode: similarly continue
-    // Trail and path will resume on next segment
+    dropProgress = 0;
+    playerMesh.position.set(pos.x, playerY, pos.z);
+  }
+}
+
+function endDrop() {
+  // End the current drop and update state
+  if (dropState === "none") return;
+  dropState = "none";
+  dropProgress = 0;
+  // Update playerY to the dropped position
+  playerY = dropTargetY;
+  playerMesh.position.set(pos.x, playerY, pos.z);
+  // Update the last drop entry's targetY to match where we actually landed
+  if (drops.length > 0) {
+    const lastDrop = drops[drops.length - 1];
+    lastDrop.targetY = dropTargetY;
   }
 }
 
@@ -1584,20 +1872,22 @@ function updateLiveTrail(headX, headZ) {
     if (liveTrailMesh) { liveTrailMesh.visible = false; }
     return;
   }
+  const w = widthScale(currentWidth);
   liveTrailMesh.visible = true;
   liveTrailMesh.scale.set(
-    Math.abs(dx) > Math.abs(dz) ? len : TRAIL_W,
-    0.28,
-    Math.abs(dz) >= Math.abs(dx) ? len : TRAIL_W
+    Math.abs(dx) > Math.abs(dz) ? len : w,
+    1,
+    Math.abs(dz) >= Math.abs(dx) ? len : w
   );
-  liveTrailMesh.position.set((trailLastX + headX) / 2, 0.14, (trailLastZ + headZ) / 2);
+  const trailY = playerY + TRAIL_H / 2 + 0.01;
+  liveTrailMesh.position.set((trailLastX + headX) / 2, trailY, (trailLastZ + headZ) / 2);
 }
 
 let livePathMesh = null;
 const PATH_AHEAD = 3.0;
 function initLiveMeshes() {
   // Live trail mesh (reused, not rebuilt)
-  const trailGeom = new THREE.BoxGeometry(1, 0.28, TRAIL_W);
+  const trailGeom = new THREE.BoxGeometry(1, TRAIL_H, TRAIL_W);
   liveTrailMesh = new THREE.Mesh(trailGeom, trailMaterial);
   liveTrailMesh.visible = false;
   scene.add(liveTrailMesh);
@@ -1625,7 +1915,8 @@ function updateLivePath(headX, headZ) {
   );
   const cx = pos.x + (direction === "x" ? totalLen / 2 : 0);
   const cz = pos.z + (direction === "z" ? totalLen / 2 : 0);
-  livePathMesh.position.set(cx, -0.06, cz);
+  // Position path at playerY level (top surface at playerY, center at playerY - 0.06)
+  livePathMesh.position.set(cx, playerY - 0.06, cz);
 }
 </script>
 </body>

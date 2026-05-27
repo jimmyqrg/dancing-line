@@ -580,6 +580,8 @@
         transition: border-color 200ms;
       }
       .settings-number:focus { border-color: rgba(255, 255, 255, 0.5); }
+      .settings-number::-webkit-inner-spin-button,
+      .settings-number::-webkit-outer-spin-button { opacity: 1; }
 
       .settings-btn {
         padding: 0.6rem 1.2rem;
@@ -799,6 +801,9 @@
         text-indent: 0.55em;
         text-transform: uppercase;
         color: var(--ink-soft);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .hud__gems {
@@ -808,6 +813,7 @@
         font-size: clamp(1rem, 1.7vw, 1.25rem);
         letter-spacing: 0.18em;
         color: var(--ink);
+        white-space: nowrap;
       }
 
       .gem {
@@ -1286,11 +1292,15 @@
           </div>
           <div class="settings-modal__row">
             <label class="settings-label" data-i18n="speedMult">Speed Multiplier</label>
-            <input type="number" class="settings-number" data-speed-mult value="0" step="0.1">
+            <input type="number" class="settings-number" data-speed-mult value="1" step="0.05">
           </div>
           <div class="settings-modal__row">
             <label class="settings-label" data-i18n="adjustOffset">Adjust Offset</label>
-            <input type="number" class="settings-number" data-audio-offset value="0" step="0.02">
+            <input type="number" class="settings-number" data-audio-offset value="0" step="0.02" inputmode="decimal">
+          </div>
+          <div class="settings-modal__row">
+            <label class="settings-label">Delay Multiply</label>
+            <input type="number" class="settings-number" data-delay-mult value="1" step="0.1" min="0">
           </div>
           <div class="settings-modal__row">
             <button class="settings-btn" data-offset-adjustment data-i18n="offsetAdjustment">Auto Adjust</button>
@@ -2372,7 +2382,9 @@
       };
 
       function getAudioOffsetForLevel(levelId, extraDelay) {
-        return (extraDelay || 0) + audioOffset + getLevelAudioOffset(levelId) + (LEVEL_AUDIO_ADJUSTMENTS[levelId] || 0);
+        // audioDelay from level JSON is handled by runtime directly via _audioDelayMs
+        // This returns only user-adjustable offset + per-level static adjustments
+        return audioOffset + getLevelAudioOffset(levelId) + (LEVEL_AUDIO_ADJUSTMENTS[levelId] || 0);
       }
 
       function ensureAudioLoaded(url) {
@@ -2425,7 +2437,7 @@
           enableClickMarks,
           invincibility,
           speedMult,
-          audioOffset: getAudioOffsetForLevel(lvl.id, lvl.audioDelay),
+          audioOffset: (getAudioOffsetForLevel(lvl.id, lvl.audioDelay) + (lvl.audioDelay || 0)) * delayMult,
         });
         showScreen("game");
         if (!autoPlay) tapPrompt.classList.add("is-active");
@@ -2572,7 +2584,7 @@
           enableClickMarks,
           invincibility,
           speedMult,
-          audioOffset: getAudioOffsetForLevel(data.id || "", data.audioDelay),
+          audioOffset: (getAudioOffsetForLevel(data.id || "__test__", data.audioDelay) + (data.audioDelay || 0)) * delayMult,
         });
         showScreen("game");
         tapPrompt.classList.add("is-active");
@@ -2599,8 +2611,9 @@
       let enableGlow = localStorage.getItem("dl_glow") !== "0";
       let enableClickMarks = localStorage.getItem("dl_clickmarks") !== "0";
       let invincibility = localStorage.getItem("dl_invincible") === "1";
-      let speedMult = parseFloat(localStorage.getItem("dl_speedmult")) || 0;
+      let speedMult = parseFloat(localStorage.getItem("dl_speedmult")) || 1;
       let audioOffset = parseFloat(localStorage.getItem("dl_audio_offset")) || 0;
+      let delayMult = parseFloat(localStorage.getItem("dl_delay_mult")) || 1;
 
       // Calibration state
       let calibrationActive = false;
@@ -2620,6 +2633,7 @@
       const invincibilityToggle = document.querySelector("[data-invincibility-toggle]");
       const speedMultInput = document.querySelector("[data-speed-mult]");
       const audioOffsetInput = document.querySelector("[data-audio-offset]");
+      const delayMultInput = document.querySelector("[data-delay-mult]");
       const langBtns = document.querySelectorAll("[data-lang]");
 
       const calibrationProgressEl = document.querySelector("[data-calibration-progress]");
@@ -2872,6 +2886,11 @@
         if (audioOffsetInput) audioOffsetInput.value = audioOffset;
       }
 
+      function applyDelayMult() {
+        localStorage.setItem("dl_delay_mult", String(delayMult));
+        if (delayMultInput) delayMultInput.value = delayMult;
+      }
+
       langBtns.forEach(btn => btn.addEventListener("click", () => {
         currentLang = btn.dataset.lang;
         applyLang();
@@ -2886,6 +2905,14 @@
           const value = parseFloat(audioOffsetInput.value);
           audioOffset = Number.isFinite(value) ? value : 0;
           applyAudioOffset();
+        });
+      }
+
+      if (delayMultInput) {
+        delayMultInput.addEventListener("input", () => {
+          const value = parseFloat(delayMultInput.value);
+          delayMult = Number.isFinite(value) ? value : 1;
+          applyDelayMult();
         });
       }
 
@@ -2904,8 +2931,8 @@
         applyInvincibility();
       });
 
-      speedMultInput.addEventListener("change", () => {
-        speedMult = parseFloat(speedMultInput.value) || 0;
+      speedMultInput.addEventListener("input", () => {
+        speedMult = parseFloat(speedMultInput.value) || 1;
         applySpeedMult();
       });
 
@@ -2983,6 +3010,7 @@
       applyInvincibility();
       applySpeedMult();
       applyAudioOffset();
+      applyDelayMult();
 
       // ─────────────────────────────────────────────────────────────
 

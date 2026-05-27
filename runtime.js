@@ -90,8 +90,12 @@ export class DancingLineGame {
     this.enableGlow = !!enableGlow && (level.glow === true);
     this.enableClickMarks = enableClickMarks !== false;
     this.invincibility = invincibility || false;
-    this.speedMult = 1 + (speedMult || 0);
+    this.speedMult = speedMult || 1;
+    // audioOffset from settings — user-adjustable offset (seconds)
     this.audioOffset = audioOffset || 0;
+    // Total audio delay: level JSON delay + user offset (both in seconds)
+    // Negative = start early, Positive = start late
+    this._audioDelayMs = ((level && level.audioDelay != null) ? parseFloat(level.audioDelay) : 0) + (audioOffset || 0);
 
     this.state = "ready";
     this.gemsCollected = 0;
@@ -559,33 +563,62 @@ export class DancingLineGame {
 
     if (fx.particles) {
       const pt = fx.particles;
-      const overlay = document.createElement("canvas");
-      overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;";
-      overlay.width = window.innerWidth;
-      overlay.height = window.innerHeight;
-      document.body.appendChild(overlay);
-      const ctx = overlay.getContext("2d");
       const count = pt.count || 150;
 
+      // Clean up any existing overlay
+      if (this._particleCanvas) {
+        this._particleCanvas.remove();
+        this._particleCanvas = null;
+      }
+
+      const heavy = pt.heavy;
+
       if (pt.type === "snow") {
-        const flakes = [];
+        const snowMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+        this._snowParticles = [];
         for (let i = 0; i < count; i++) {
-          flakes.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, r: 3 + Math.random() * 4, vx: (Math.random() - 0.5) * 40, vy: 80 + Math.random() * 100, opacity: 0.8 + Math.random() * 0.2 });
+          const r = 0.05 + Math.random() * 0.1;
+          const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 4, 4), snowMat.clone());
+          mesh.visible = false;
+          this.scene.add(mesh);
+          this._snowParticles.push({
+            mesh,
+            vx: (Math.random() - 0.5) * 2,
+            vy: -(1 + Math.random() * 2),
+            vz: (Math.random() - 0.5) * 2,
+          });
         }
-        this._anim = { type: "snow-2d", overlay, ctx, flakes, count };
+        this._anim = { type: "snow-3d", count };
       } else if (pt.type === "rain") {
-        const drops = [];
+        const rainMat = new THREE.MeshBasicMaterial({ color: 0xaaccdd, transparent: true, opacity: heavy ? 0.7 : 0.5 });
+        this._rainParticles = [];
         for (let i = 0; i < count; i++) {
-          drops.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, len: 15 + Math.random() * 25, vx: (Math.random() - 0.3) * 30, vy: 700 + Math.random() * 500, opacity: 0.25 + Math.random() * 0.35 });
+          const len = heavy ? 0.3 + Math.random() * 0.5 : 0.15 + Math.random() * 0.3;
+          const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, len, 4), rainMat.clone());
+          mesh.visible = false;
+          this.scene.add(mesh);
+          this._rainParticles.push({
+            mesh,
+            vy: -(heavy ? 20 + Math.random() * 15 : 10 + Math.random() * 8),
+          });
         }
-        this._anim = { type: "rain-2d", overlay, ctx, drops, count };
+        this._anim = { type: "rain-3d", count, heavy };
       } else if (pt.type === "dust") {
-        const slopes = [1/3, 1/2, 2/3];
-        const dustParts = [];
+        const dustColor = 0xbebebe;
+        this._dustParticles = [];
         for (let i = 0; i < count; i++) {
-          dustParts.push({ x: Math.random() * overlay.width, y: Math.random() * overlay.height, size: 3 + Math.random() * 5, slope: slopes[Math.floor(Math.random() * 3)], slopeTimer: Math.random() * 3, vx: -(180 + Math.random() * 120), opacity: 0.3 + Math.random() * 0.3 });
+          const size = 0.04 + Math.random() * 0.08;
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), new THREE.MeshBasicMaterial({ color: dustColor, transparent: true, opacity: 0.4 + Math.random() * 0.3 }));
+          mesh.visible = false;
+          this.scene.add(mesh);
+          this._dustParticles.push({
+            mesh,
+            vx: -(2 + Math.random() * 2),
+            vy: 0,
+            vz: (Math.random() - 0.5) * 0.5,
+          });
         }
-        this._anim = { type: "dust-2d", overlay, ctx, dustParts, count, color: "190,190,190" };
+        this._anim = { type: "dust-3d", count };
       }
     }
 
@@ -736,39 +769,46 @@ export class DancingLineGame {
           item.mesh.position.lerpVectors(item.origin, item.target, e);
         }
       }
-    } else if (this._anim.type === "snow-2d") {
-      const a = this._anim;
-      const w = a.overlay.width, h = a.overlay.height;
-      a.ctx.clearRect(0, 0, w, h);
-      for (const f of a.flakes) {
-        f.x += f.vx * dt;
-        f.y += f.vy * dt;
-        if (f.y > h) { f.y = -5; f.x = Math.random() * w; }
-        if (f.x < 0) f.x = w;
-        if (f.x > w) f.x = 0;
-        a.ctx.beginPath();
-        a.ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-        a.ctx.fillStyle = `rgba(255,255,255,${f.opacity})`;
-        a.ctx.fill();
+    } else if (this._anim.type === "snow-3d") {
+      const range = 30;
+      for (const p of this._snowParticles) {
+        p.mesh.position.set(
+          px + (Math.random() - 0.5) * range,
+          p.mesh.position.y + p.vy * dt,
+          pz + (Math.random() - 0.5) * range
+        );
+        if (p.mesh.position.y < -5) {
+          p.mesh.position.set(px + (Math.random() - 0.5) * range, 20, pz + (Math.random() - 0.5) * range);
+        }
+        p.mesh.visible = true;
       }
-    } else if (this._anim.type === "rain-2d") {
-      const a = this._anim;
-      const w = a.overlay.width, h = a.overlay.height;
-      a.ctx.clearRect(0, 0, w, h);
-      for (const d of a.drops) {
-        d.x += d.vx * dt;
-        d.y += d.vy * dt;
-        if (d.y > h + d.len) { d.y = -d.len; d.x = Math.random() * w; }
-        if (d.x < -20) d.x = w + 10;
-        if (d.x > w + 20) d.x = -10;
-        const angle = d.vx / d.vy;
-        a.ctx.beginPath();
-        a.ctx.moveTo(d.x, d.y);
-        a.ctx.lineTo(d.x + angle * d.len, d.y + d.len);
-        a.ctx.strokeStyle = `rgba(180,200,220,${d.opacity})`;
-        a.ctx.lineWidth = 1.5;
-        a.ctx.lineCap = "round";
-        a.ctx.stroke();
+    } else if (this._anim.type === "rain-3d") {
+      const range = 25;
+      for (const p of this._rainParticles) {
+        p.mesh.position.set(
+          px + (Math.random() - 0.5) * range,
+          p.mesh.position.y + p.vy * dt,
+          pz + (Math.random() - 0.5) * range
+        );
+        if (p.mesh.position.y < -2) {
+          p.mesh.position.set(px + (Math.random() - 0.5) * range, 25, pz + (Math.random() - 0.5) * range);
+        }
+        p.mesh.visible = true;
+      }
+    } else if (this._anim.type === "dust-3d") {
+      const range = 20;
+      for (const p of this._dustParticles) {
+        p.mesh.position.set(
+          p.mesh.position.x + p.vx * dt,
+          p.mesh.position.y + p.vy * dt,
+          p.mesh.position.z + p.vz * dt
+        );
+        const dx = p.mesh.position.x - px;
+        const dz = p.mesh.position.z - pz;
+        if (Math.abs(dx) > range || Math.abs(dz) > range) {
+          p.mesh.position.set(px + (Math.random() - 0.5) * range, Math.random() * 5, pz + (Math.random() - 0.5) * range);
+        }
+        p.mesh.visible = true;
       }
     } else if (this._anim.type === "crystal") {
       const a = this._anim;
@@ -990,7 +1030,16 @@ export class DancingLineGame {
     this._playingTime = 0;
     // Start music immediately so timing matches recorded clicks
     this.music.setRate(this.speedMult);
-    this.music.play();
+    const totalDelayMs = this._audioDelayMs * 1000;
+    console.log("[DancingLine] start() totalDelayMs =", totalDelayMs, "(_audioDelayMs =", this._audioDelayMs, ")");
+    if (totalDelayMs > 0) {
+      // Positive = delay: wait before playing
+      this._musicTimeout = setTimeout(() => {
+        if (this.state === "playing") this.music.play();
+      }, totalDelayMs);
+    } else {
+      this.music.play();
+    }
     this.onEvent({ type: "start" });
   }
 
@@ -999,6 +1048,11 @@ export class DancingLineGame {
       this.state = "paused";
       this._pausedPlayingTime = this._playingTime;
       this.music.pause();
+      // Clear any pending delayed music start
+      if (this._musicTimeout) {
+        clearTimeout(this._musicTimeout);
+        this._musicTimeout = null;
+      }
       this.onEvent({ type: "pause" });
     }
   }
@@ -1008,7 +1062,14 @@ export class DancingLineGame {
       this.state = "playing";
       this._lastTs = 0;
       this._playingTime = this._pausedPlayingTime ?? this._playingTime;
-      this.music.resume();
+      // If music hasn't started due to delay, start it now
+      if (this._musicTimeout) {
+        clearTimeout(this._musicTimeout);
+        this._musicTimeout = null;
+        this.music.play();
+      } else {
+        this.music.resume();
+      }
       this.onEvent({ type: "resume" });
     }
   }
@@ -1328,14 +1389,22 @@ export class DancingLineGame {
   destroy() {
     this._destroyed = true;
     this.music.destroy();
+    console.log("[DancingLine] destroy() called, clearing music timeout");
+    if (this._musicTimeout) { clearTimeout(this._musicTimeout); this._musicTimeout = null; }
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("keydown", this._onKeyDown);
     window.removeEventListener("keyup", this._onKeyUp);
     this.canvas.removeEventListener("pointerdown", this._onPointerDown);
     if (this.composer) { this.composer.dispose(); this.composer = null; }
-    if (this._anim && this._anim.overlay) {
-      this._anim.overlay.remove();
-    }
+    if (this._particleCanvas) { this._particleCanvas.remove(); this._particleCanvas = null; }
+    if (this._anim && this._anim.overlay) { this._anim.overlay.remove(); }
+    // Clean up 3D particles
+    [this._snowParticles, this._rainParticles, this._dustParticles].forEach(arr => {
+      if (arr) arr.forEach(p => { this.scene.remove(p.mesh); });
+    });
+    this._snowParticles = null;
+    this._rainParticles = null;
+    this._dustParticles = null;
     this.renderer.state.reset();
     this.renderer.clear();
     this.renderer.dispose();
